@@ -1,0 +1,34 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsup src/index.ts --watch --dts false --format esm",
+    "build": "tsup src/index.ts --dts false --format esm",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "postinstall": ""
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.686.0",
+    "@aws-sdk/client-ses": "^3.686.0",
+    "@aws-sdk/lib-dynamodb": "^3.686.0",
+    "@aws-sdk/util-dynamodb": "^3.686.0",
+    "@middy/core": "^6.4.5",
+    "@middy/http-error-handler": "^6.4.5",
+    "@middy/http-json-body-parser": "^6.4.5",
+    "@middy/validator": "^6.4.5",
+    "http-errors": "^2.0.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.134",
+    "@types/http-errors": "^2.0.4",
+    "@types/node": "^20.14.2",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/frontend" },
+    { "path": "./services/api" },
+    { "path": "./packages/shared" },
+    { "path": "./infra/cdk" }
+  ]
+}
