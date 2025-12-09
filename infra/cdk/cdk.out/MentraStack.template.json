@@ -1,0 +1,674 @@
+{
+ "Description": "Mentra foundational infrastructure stack",
+ "Resources": {
+  "FrontendBucketEFE2E19C": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/FrontendBucket/Resource"
+   }
+  },
+  "FrontendBucketPolicy1DFF75D9": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "FrontendBucketEFE2E19C"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "FrontendBucketEFE2E19C",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "FrontendBucketEFE2E19C",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "CanonicalUser": {
+         "Fn::GetAtt": [
+          "FrontendOAIF4D25B13",
+          "S3CanonicalUserId"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "FrontendBucketEFE2E19C",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "FrontendBucketEFE2E19C",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "s3:GetObject",
+       "Effect": "Allow",
+       "Principal": {
+        "CanonicalUser": {
+         "Fn::GetAtt": [
+          "FrontendOAIF4D25B13",
+          "S3CanonicalUserId"
+         ]
+        }
+       },
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "FrontendBucketEFE2E19C",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/FrontendBucket/Policy/Resource"
+   }
+  },
+  "FrontendOAIF4D25B13": {
+   "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+   "Properties": {
+    "CloudFrontOriginAccessIdentityConfig": {
+     "Comment": "Mentra frontend distribution access"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/FrontendOAI/Resource"
+   }
+  },
+  "FrontendDistributionE6EAF405": {
+   "Type": "AWS::CloudFront::Distribution",
+   "Properties": {
+    "DistributionConfig": {
+     "Comment": "Mentra static frontend",
+     "DefaultCacheBehavior": {
+      "AllowedMethods": [
+       "GET",
+       "HEAD",
+       "OPTIONS"
+      ],
+      "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+      "Compress": true,
+      "TargetOriginId": "MentraStackFrontendDistributionOrigin1FECECE17",
+      "ViewerProtocolPolicy": "redirect-to-https"
+     },
+     "DefaultRootObject": "index.html",
+     "Enabled": true,
+     "HttpVersion": "http2",
+     "IPV6Enabled": true,
+     "Origins": [
+      {
+       "DomainName": {
+        "Fn::GetAtt": [
+         "FrontendBucketEFE2E19C",
+         "RegionalDomainName"
+        ]
+       },
+       "Id": "MentraStackFrontendDistributionOrigin1FECECE17",
+       "S3OriginConfig": {
+        "OriginAccessIdentity": {
+         "Fn::Join": [
+          "",
+          [
+           "origin-access-identity/cloudfront/",
+           {
+            "Ref": "FrontendOAIF4D25B13"
+           }
+          ]
+         ]
+        }
+       }
+      }
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/FrontendDistribution/Resource"
+   }
+  },
+  "MentraApiFunctionServiceRoleE8583E93": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraApiFunction/ServiceRole/Resource"
+   }
+  },
+  "MentraApiFunctionServiceRoleDefaultPolicy11C6C8E5": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:dynamodb:ap-northeast-1:085141726968:table/mentra-tenant-table"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "MentraApiFunctionServiceRoleDefaultPolicy11C6C8E5",
+    "Roles": [
+     {
+      "Ref": "MentraApiFunctionServiceRoleE8583E93"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraApiFunction/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "MentraApiFunction82A0B47B": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-085141726968-ap-northeast-1",
+     "S3Key": "9dd7df823b313a0cb4b174de49deeb1d83934312629020c1eeb010d95879fd60.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "MENTRA_TABLE_NAME": "mentra-tenant-table"
+     }
+    },
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "MentraApiFunctionServiceRoleE8583E93",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "MentraApiFunctionServiceRoleDefaultPolicy11C6C8E5",
+    "MentraApiFunctionServiceRoleE8583E93"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraApiFunction/Resource",
+    "aws:asset:path": "asset.9dd7df823b313a0cb4b174de49deeb1d83934312629020c1eeb010d95879fd60",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "MentraHttpApiC86E715E": {
+   "Type": "AWS::ApiGatewayV2::Api",
+   "Properties": {
+    "CorsConfiguration": {
+     "AllowHeaders": [
+      "*"
+     ],
+     "AllowMethods": [
+      "GET",
+      "POST",
+      "OPTIONS"
+     ],
+     "AllowOrigins": [
+      "*"
+     ]
+    },
+    "Name": "MentraHttpApi",
+    "ProtocolType": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/Resource"
+   }
+  },
+  "MentraHttpApiDefaultStage84B2E917": {
+   "Type": "AWS::ApiGatewayV2::Stage",
+   "Properties": {
+    "ApiId": {
+     "Ref": "MentraHttpApiC86E715E"
+    },
+    "AutoDeploy": true,
+    "StageName": "$default"
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/DefaultStage/Resource"
+   }
+  },
+  "MentraHttpApiGEThealthMentraApiIntegration845F367F": {
+   "Type": "AWS::ApiGatewayV2::Integration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "MentraHttpApiC86E715E"
+    },
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": {
+     "Fn::GetAtt": [
+      "MentraApiFunction82A0B47B",
+      "Arn"
+     ]
+    },
+    "PayloadFormatVersion": "2.0"
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/GET--health/MentraApiIntegration/Resource"
+   }
+  },
+  "MentraHttpApiGEThealthMentraApiIntegrationPermissionEB8CD617": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "MentraApiFunction82A0B47B",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:ap-northeast-1:085141726968:",
+       {
+        "Ref": "MentraHttpApiC86E715E"
+       },
+       "/*/*/health"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/GET--health/MentraApiIntegration-Permission"
+   }
+  },
+  "MentraHttpApiGEThealth8C2D05D5": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "MentraHttpApiC86E715E"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "GET /health",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "MentraHttpApiGEThealthMentraApiIntegration845F367F"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/GET--health/Resource"
+   }
+  },
+  "MentraHttpApiGETmenutenantIdMentraApiIntegrationPermission1B629825": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "MentraApiFunction82A0B47B",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:ap-northeast-1:085141726968:",
+       {
+        "Ref": "MentraHttpApiC86E715E"
+       },
+       "/*/*/menu/{tenantId}"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/GET--menu--{tenantId}/MentraApiIntegration-Permission"
+   }
+  },
+  "MentraHttpApiGETmenutenantIdC023110A": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "MentraHttpApiC86E715E"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "GET /menu/{tenantId}",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "MentraHttpApiGEThealthMentraApiIntegration845F367F"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/GET--menu--{tenantId}/Resource"
+   }
+  },
+  "MentraHttpApiPOSTmenutenantIdMentraApiIntegrationPermission9BA20191": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "MentraApiFunction82A0B47B",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:ap-northeast-1:085141726968:",
+       {
+        "Ref": "MentraHttpApiC86E715E"
+       },
+       "/*/*/menu/{tenantId}"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/POST--menu--{tenantId}/MentraApiIntegration-Permission"
+   }
+  },
+  "MentraHttpApiPOSTmenutenantId3D90CA09": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "MentraHttpApiC86E715E"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "POST /menu/{tenantId}",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "MentraHttpApiGEThealthMentraApiIntegration845F367F"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/POST--menu--{tenantId}/Resource"
+   }
+  },
+  "MentraHttpApiGETmenutenantIditemIdMentraApiIntegrationPermissionE06D8726": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "MentraApiFunction82A0B47B",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":execute-api:ap-northeast-1:085141726968:",
+       {
+        "Ref": "MentraHttpApiC86E715E"
+       },
+       "/*/*/menu/{tenantId}/{itemId}"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/GET--menu--{tenantId}--{itemId}/MentraApiIntegration-Permission"
+   }
+  },
+  "MentraHttpApiGETmenutenantIditemId624A052A": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "MentraHttpApiC86E715E"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "GET /menu/{tenantId}/{itemId}",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "MentraHttpApiGEThealthMentraApiIntegration845F367F"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/MentraHttpApi/GET--menu--{tenantId}--{itemId}/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/22PQW/CMAyFfwv34EE57QhMCC5jKrsjNwmVoU2q2gGhqP99SsrGNO303os+PzsFFIs5zCZ446k2l2lDFcSDoL4ovPExmrvD1psKPrFq7ArZKl5AXAV9saLWJ/dwo3z4hvT9+fzIY0jDg9KND+bUeycQ9z3V5JZaW+adsU5I8vA6MZvE/Eu8EUtPVRDyLuG/86AabCuDR+eNPTO8Z9kEpzNN2EIsfWPTXNbnyaMbFC+OyGyFYZnkUQhxfXI/PQm3fUvMeSd2VKPYG96vBcStSLfsKEFJUjwI1nnnaNJT6YOMbufE1j1+F/+JmRsGVVr2oddW5atSD7k6AfsgXZBBpR/DmV+uxQzmrzCbnJlo2gcn1FooR/0CyNPNEvABAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "FrontendBucketName": {
+   "Value": {
+    "Ref": "FrontendBucketEFE2E19C"
+   },
+   "Export": {
+    "Name": "MentraFrontendBucketName"
+   }
+  },
+  "CloudFrontDistributionId": {
+   "Value": {
+    "Ref": "FrontendDistributionE6EAF405"
+   },
+   "Export": {
+    "Name": "MentraCloudFrontDistributionId"
+   }
+  },
+  "CloudFrontDomainName": {
+   "Value": {
+    "Fn::GetAtt": [
+     "FrontendDistributionE6EAF405",
+     "DomainName"
+    ]
+   },
+   "Export": {
+    "Name": "MentraCloudFrontDomainName"
+   }
+  },
+  "ApiEndpoint": {
+   "Value": {
+    "Fn::GetAtt": [
+     "MentraHttpApiC86E715E",
+     "ApiEndpoint"
+    ]
+   },
+   "Export": {
+    "Name": "MentraApiEndpoint"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

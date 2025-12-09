@@ -1,0 +1,6 @@
+{
+  "app": "npx ts-node --project tsconfig.json bin/mentra.ts",
+  "context": {
+    "@aws-cdk/aws-iam:minimizePolicies": true
+  }
+}

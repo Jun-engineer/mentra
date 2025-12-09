@@ -1,0 +1,36 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "9dd7df823b313a0cb4b174de49deeb1d83934312629020c1eeb010d95879fd60": {
+      "displayName": "MentraApiFunction/Code",
+      "source": {
+        "path": "asset.9dd7df823b313a0cb4b174de49deeb1d83934312629020c1eeb010d95879fd60",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "085141726968-ap-northeast-1-16cf27fe": {
+          "bucketName": "cdk-hnb659fds-assets-085141726968-ap-northeast-1",
+          "objectKey": "9dd7df823b313a0cb4b174de49deeb1d83934312629020c1eeb010d95879fd60.zip",
+          "region": "ap-northeast-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::085141726968:role/cdk-hnb659fds-file-publishing-role-085141726968-ap-northeast-1"
+        }
+      }
+    },
+    "5a9a13197393333903fa1698c4d2fa92f3dcaec69a65d73f670d57dcd4c563e1": {
+      "displayName": "MentraStack Template",
+      "source": {
+        "path": "MentraStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "085141726968-ap-northeast-1-776d8ccc": {
+          "bucketName": "cdk-hnb659fds-assets-085141726968-ap-northeast-1",
+          "objectKey": "5a9a13197393333903fa1698c4d2fa92f3dcaec69a65d73f670d57dcd4c563e1.json",
+          "region": "ap-northeast-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::085141726968:role/cdk-hnb659fds-file-publishing-role-085141726968-ap-northeast-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
