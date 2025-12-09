@@ -11,6 +11,8 @@ permissions:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  NEXT_PUBLIC_MENTRA_API_BASE_URL: ${{ vars.NEXT_PUBLIC_MENTRA_API_BASE_URL || '' }}
+  NEXT_PUBLIC_MENTRA_TENANT_ID: ${{ vars.NEXT_PUBLIC_MENTRA_TENANT_ID || 'demo' }}
 
 jobs:
   build-and-deploy:

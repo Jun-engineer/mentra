@@ -1,34 +1,55 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { fetchMenuItem } from "@/lib/menu-service";
+import { fetchMenuItem, fetchMenuItems } from "@/lib/menu-service";
+import type { MenuItem } from "@/data/menu";
 import { slugify } from "@/data/menu";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
+
+export async function generateStaticParams(): Promise<Array<{ itemId: string }>> {
+  try {
+    const items = await fetchMenuItems({ cache: "force-cache" });
+    return items.map(item => ({ itemId: item.id }));
+  } catch (error) {
+    console.warn("Mentra export: failed to load menu items for static params", error);
+    return [];
+  }
+}
 
 export async function generateMetadata({
   params
 }: {
-  params: Promise<{ itemId: string }>;
+  params: { itemId: string };
 }): Promise<Metadata> {
-  const { itemId } = await params;
-  const item = await fetchMenuItem(itemId);
+  try {
+    const item = await fetchMenuItem(params.itemId, { cache: "force-cache" });
 
-  if (!item) {
+    if (!item) {
+      return {
+        title: "Training Item • Mentra"
+      };
+    }
+
+    return {
+      title: `${item.title} • Mentra`,
+      description: item.description ?? undefined
+    };
+  } catch (error) {
+    console.warn("Mentra export: failed to load metadata for item", params.itemId, error);
     return {
       title: "Training Item • Mentra"
     };
   }
-
-  return {
-    title: `${item.title} • Mentra`,
-    description: item.description ?? undefined
-  };
 }
 
-export default async function ItemPage({ params }: { params: Promise<{ itemId: string }> }) {
-  const { itemId } = await params;
-  const item = await fetchMenuItem(itemId);
+export default async function ItemPage({ params }: { params: { itemId: string } }) {
+  let item: MenuItem | null = null;
+  try {
+    item = await fetchMenuItem(params.itemId, { cache: "force-cache" });
+  } catch (error) {
+    console.warn("Mentra export: failed to load item", params.itemId, error);
+  }
 
   if (!item) {
     notFound();

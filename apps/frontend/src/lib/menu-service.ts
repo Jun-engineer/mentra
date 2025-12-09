@@ -23,6 +23,10 @@ type ApiMenuItem = {
   createdAt?: unknown;
 };
 
+type FetchConfig = {
+  cache?: RequestInit["cache"];
+};
+
 const asStringOrNull = (value: unknown): string | null => {
   if (typeof value === "string") {
     return value;
@@ -70,9 +74,9 @@ const normalizeItem = (item: ApiMenuItem): MenuItem => {
   };
 };
 
-export const fetchMenuItems = async (): Promise<MenuItem[]> => {
+export const fetchMenuItems = async (config: FetchConfig = {}): Promise<MenuItem[]> => {
   const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}`), {
-    cache: "no-store"
+    cache: config.cache ?? "no-store"
   });
 
   if (!response.ok) {
@@ -84,9 +88,9 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
   return items.map(entry => normalizeItem(entry));
 };
 
-export const fetchMenuItem = async (itemId: string): Promise<MenuItem | null> => {
+export const fetchMenuItem = async (itemId: string, config: FetchConfig = {}): Promise<MenuItem | null> => {
   const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}/${itemId}`), {
-    cache: "no-store"
+    cache: config.cache ?? "no-store"
   });
 
   if (response.status === 404) {
