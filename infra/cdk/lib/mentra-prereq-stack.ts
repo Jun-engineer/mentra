@@ -1,5 +1,5 @@
 import { CfnOutput, Duration, Stack, StackProps } from "aws-cdk-lib";
-import { ManagedPolicy, OpenIdConnectProvider, Role, WebIdentityPrincipal, IOpenIdConnectProvider } from "aws-cdk-lib/aws-iam";
+import { ManagedPolicy, OpenIdConnectProvider, Role, WebIdentityPrincipal, IOpenIdConnectProvider, IRole } from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 
 export interface MentraPrereqStackProps extends StackProps {
@@ -8,14 +8,16 @@ export interface MentraPrereqStackProps extends StackProps {
     repo: string;
     branch?: string;
     roleName?: string;
+    roleArn?: string;
     providerArn?: string;
     providerStrategy?: "create" | "import";
+    roleStrategy?: "create" | "import";
   };
 }
 
 export class MentraPrereqStack extends Stack {
   public readonly provider: IOpenIdConnectProvider;
-  public readonly deployRole: Role;
+  public readonly deployRole: IRole;
 
   constructor(scope: Construct, id: string, props?: MentraPrereqStackProps) {
     super(scope, id, props);
@@ -24,8 +26,10 @@ export class MentraPrereqStack extends Stack {
     const githubRepo = props?.github?.repo ?? process.env.MENTRA_GITHUB_REPO ?? "mentra";
     const githubBranch = props?.github?.branch ?? process.env.MENTRA_GITHUB_BRANCH ?? "main";
     const githubRoleName = props?.github?.roleName ?? process.env.MENTRA_GITHUB_ROLE ?? "MentraGithubDeployRole";
+    const explicitRoleArn = props?.github?.roleArn ?? process.env.MENTRA_GITHUB_ROLE_ARN;
     const explicitProviderArn = props?.github?.providerArn ?? process.env.MENTRA_GITHUB_PROVIDER_ARN;
     const providerStrategy = (props?.github?.providerStrategy ?? process.env.MENTRA_GITHUB_PROVIDER_STRATEGY ?? "import").toLowerCase();
+    const roleStrategy = (props?.github?.roleStrategy ?? process.env.MENTRA_GITHUB_ROLE_STRATEGY ?? "import").toLowerCase();
 
     if (explicitProviderArn) {
       this.provider = OpenIdConnectProvider.fromOpenIdConnectProviderArn(
@@ -47,22 +51,30 @@ export class MentraPrereqStack extends Stack {
       });
     }
 
-    this.deployRole = new Role(this, "GithubActionsRole", {
-      roleName: githubRoleName,
-      assumedBy: new WebIdentityPrincipal(this.provider.openIdConnectProviderArn, {
-        StringEquals: {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        StringLike: {
-          "token.actions.githubusercontent.com:sub": [
-            `repo:${githubOwner}/${githubRepo}:ref:refs/heads/${githubBranch}`,
-            `repo:${githubOwner}/${githubRepo}:ref:refs/tags/*`
-          ]
-        }
-      }),
-      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess")],
-      maxSessionDuration: Duration.hours(1)
-    });
+    if (explicitRoleArn) {
+      this.deployRole = Role.fromRoleArn(this, "GithubActionsRole", explicitRoleArn, {
+        mutable: false
+      });
+    } else if (roleStrategy === "import") {
+      this.deployRole = Role.fromRoleName(this, "GithubActionsRole", githubRoleName);
+    } else {
+      this.deployRole = new Role(this, "GithubActionsRole", {
+        roleName: githubRoleName,
+        assumedBy: new WebIdentityPrincipal(this.provider.openIdConnectProviderArn, {
+          StringEquals: {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+          },
+          StringLike: {
+            "token.actions.githubusercontent.com:sub": [
+              `repo:${githubOwner}/${githubRepo}:ref:refs/heads/${githubBranch}`,
+              `repo:${githubOwner}/${githubRepo}:ref:refs/tags/*`
+            ]
+          }
+        }),
+        managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess")],
+        maxSessionDuration: Duration.hours(1)
+      });
+    }
 
     new CfnOutput(this, "GithubDeployRoleArn", {
       value: this.deployRole.roleArn,
