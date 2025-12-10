@@ -72,24 +72,17 @@ export class MentraStack extends Stack {
       tenantTableNameForEnv = createdTable.tableName;
     }
 
-    const siteBucketEnv = process.env.MENTRA_SITE_BUCKET?.trim();
-    const providedBucketName = siteBucketEnv ? siteBucketEnv : undefined;
-    const inferredBucketName = props?.site?.bucketName ?? providedBucketName ?? `mentra-frontend-${this.account}-${this.region}`;
+    const inferredBucketName = props?.site?.bucketName ?? process.env.MENTRA_SITE_BUCKET ?? `mentra-frontend-${this.account}-${this.region}`;
 
-    let siteBucket: Bucket | undefined;
-    if (!props?.site?.bucketName && !providedBucketName) {
-      siteBucket = new Bucket(this, "FrontendBucket", {
-        bucketName: inferredBucketName,
-        versioned: true,
-        encryption: BucketEncryption.S3_MANAGED,
-        enforceSSL: true,
-        blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-        removalPolicy: RemovalPolicy.RETAIN,
-        autoDeleteObjects: false
-      });
-    }
-
-    const frontendBucket = siteBucket ?? Bucket.fromBucketName(this, "FrontendBucket", inferredBucketName);
+    const frontendBucket = new Bucket(this, "FrontendBucket", {
+      bucketName: inferredBucketName,
+      versioned: true,
+      encryption: BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: RemovalPolicy.RETAIN,
+      autoDeleteObjects: false
+    });
 
     const originAccessIdentity = new OriginAccessIdentity(this, "FrontendOAI", {
       comment: "Mentra frontend distribution access"
