@@ -88,6 +88,7 @@ jobs:
           MENTRA_GITHUB_PROVIDER_STRATEGY: import
           MENTRA_GITHUB_PROVIDER_ARN: ${{ steps.prereq-outputs.outputs.oidc_provider_arn }}
           MENTRA_SITE_BUCKET: ${{ steps.frontend-bucket.outputs.bucket }}
+          MENTRA_TENANT_TABLE_MODE: import
         run: pnpm --dir infra/cdk exec cdk deploy MentraStack --require-approval never
 
       - name: Fetch stack outputs
