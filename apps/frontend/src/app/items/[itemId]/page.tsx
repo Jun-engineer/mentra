@@ -10,17 +10,8 @@ export const dynamic = "force-static";
 
 export const dynamicParams = false;
 
-export async function generateStaticParams(): Promise<Array<{ itemId: string }>> {
-  if (!appConfig.apiBaseUrl) {
-    return [];
-  }
-  try {
-    const items = await fetchMenuItems({ cache: "force-cache" });
-    return items.map(item => ({ itemId: item.id }));
-  } catch (error) {
-    console.warn("Mentra export: failed to load menu items for static params", error);
-    return [];
-  }
+export function generateStaticParams(): Array<{ itemId: string }> {
+  return [];
 }
 
 export async function generateMetadata({
