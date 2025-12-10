@@ -79,8 +79,7 @@ export class MentraStack extends Stack {
     });
 
     const originAccessIdentity = new OriginAccessIdentity(this, "FrontendOAI", {
-      comment: "Mentra frontend distribution access",
-      originAccessIdentityName: `mentra-frontend-oai-${this.account}-${this.region}`
+      comment: "Mentra frontend distribution access"
     });
 
     siteBucket.grantRead(originAccessIdentity);
