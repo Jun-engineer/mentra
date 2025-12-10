@@ -1,80 +1,17 @@
 {
  "Description": "Mentra GitHub OIDC provider and deployment role",
- "Resources": {
-  "GithubActionsRoleF5CC769F": {
-   "Type": "AWS::IAM::Role",
-   "Properties": {
-    "AssumeRolePolicyDocument": {
-     "Statement": [
-      {
-       "Action": "sts:AssumeRoleWithWebIdentity",
-       "Condition": {
-        "StringEquals": {
-         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-         "token.actions.githubusercontent.com:sub": [
-          "repo:Jun-engineer/mentra:ref:refs/heads/main",
-          "repo:Jun-engineer/mentra:ref:refs/tags/*"
-         ]
-        }
-       },
-       "Effect": "Allow",
-       "Principal": {
-        "Federated": {
-         "Fn::Join": [
-          "",
-          [
-           "arn:",
-           {
-            "Ref": "AWS::Partition"
-           },
-           ":iam::085141726968:oidc-provider/token.actions.githubusercontent.com"
-          ]
-         ]
-        }
-       }
-      }
-     ],
-     "Version": "2012-10-17"
-    },
-    "ManagedPolicyArns": [
-     {
-      "Fn::Join": [
-       "",
-       [
-        "arn:",
-        {
-         "Ref": "AWS::Partition"
-        },
-        ":iam::aws:policy/AdministratorAccess"
-       ]
-      ]
-     }
-    ],
-    "MaxSessionDuration": 3600,
-    "RoleName": "MentraGithubDeployRole"
-   },
-   "Metadata": {
-    "aws:cdk:path": "MentraPrereqStack/GithubActionsRole/Resource"
-   }
-  },
-  "CDKMetadata": {
-   "Type": "AWS::CDK::Metadata",
-   "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/yXGuw2AIBAA0Fns4USsrB3ABAcwiGdyfsB4IIVxd2Os3tOg6wpUYTNLN61yoxHuPlq3CoMc0ulQ2MwD2R1uEzYU7ew/ny9dikeKj/BhQli4vLSCqgFVLEwkz+Qj7Qjm9wXTGgb1awAAAA=="
-   },
-   "Metadata": {
-    "aws:cdk:path": "MentraPrereqStack/CDKMetadata/Default"
-   }
-  }
- },
  "Outputs": {
   "GithubDeployRoleArn": {
    "Value": {
-    "Fn::GetAtt": [
-     "GithubActionsRoleF5CC769F",
-     "Arn"
+    "Fn::Join": [
+     "",
+     [
+      "arn:",
+      {
+       "Ref": "AWS::Partition"
+      },
+      ":iam::085141726968:role/MentraGithubDeployRole"
+     ]
     ]
    },
    "Export": {
@@ -96,6 +33,17 @@
    },
    "Export": {
     "Name": "MentraGithubOidcProviderArn"
+   }
+  }
+ },
+ "Resources": {
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzI21DNQTCwv1k1OydbNyUzSqw4uSUzO1glKLc4vLUpO1XFOy/MvLSkoLanVyctPSdXLKtYvMzLQM7TUM1DMKs7M1C0qzSvJzE3VC4LQAPz1pM9UAAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "MentraPrereqStack/CDKMetadata/Default"
    }
   }
  },

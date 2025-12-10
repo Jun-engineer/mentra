@@ -280,7 +280,7 @@
    "Properties": {
     "Code": {
      "S3Bucket": "cdk-hnb659fds-assets-085141726968-ap-northeast-1",
-     "S3Key": "9dd7df823b313a0cb4b174de49deeb1d83934312629020c1eeb010d95879fd60.zip"
+     "S3Key": "bf60fea0fdc2d517cf391e1950c389965d78a390f328c2130150f8ebb39e8766.zip"
     },
     "Environment": {
      "Variables": {
@@ -303,7 +303,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "MentraStack/MentraApiFunction/Resource",
-    "aws:asset:path": "asset.9dd7df823b313a0cb4b174de49deeb1d83934312629020c1eeb010d95879fd60",
+    "aws:asset:path": "/home/jun/app/full_stack_dev/mentra",
     "aws:asset:is-bundled": true,
     "aws:asset:property": "Code"
    }

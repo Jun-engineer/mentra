@@ -66,8 +66,10 @@ export class MentraStack extends Stack {
       tenantTableNameForEnv = createdTable.tableName;
     }
 
+    const inferredBucketName = props?.site?.bucketName ?? process.env.MENTRA_SITE_BUCKET ?? `mentra-frontend-${this.account}-${this.region}`;
+
     const siteBucket = new Bucket(this, "FrontendBucket", {
-      bucketName: props?.site?.bucketName ?? process.env.MENTRA_SITE_BUCKET,
+      bucketName: inferredBucketName,
       versioned: true,
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
@@ -77,7 +79,8 @@ export class MentraStack extends Stack {
     });
 
     const originAccessIdentity = new OriginAccessIdentity(this, "FrontendOAI", {
-      comment: "Mentra frontend distribution access"
+      comment: "Mentra frontend distribution access",
+      originAccessIdentityName: `mentra-frontend-oai-${this.account}-${this.region}`
     });
 
     siteBucket.grantRead(originAccessIdentity);
@@ -88,7 +91,7 @@ export class MentraStack extends Stack {
 
     const distribution = new Distribution(this, "FrontendDistribution", {
       defaultRootObject: "index.html",
-      comment: "Mentra static frontend",
+      comment: "Mentra static frontend distribution",
       defaultBehavior: {
         origin: bucketOrigin,
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -107,6 +110,7 @@ export class MentraStack extends Stack {
           code: Code.fromInline(
             "exports.handler = async () => ({ statusCode: 200, body: JSON.stringify({ ok: true }) });"
           ),
+          functionName: `mentra-api-${this.account}-${this.region}`,
           environment: {
             MENTRA_TABLE_NAME: tenantTableNameForEnv
           },
@@ -125,6 +129,7 @@ export class MentraStack extends Stack {
             minify: true,
             sourceMap: true
           },
+          functionName: `mentra-api-${this.account}-${this.region}`,
           environment: {
             MENTRA_TABLE_NAME: tenantTableNameForEnv
           },
@@ -135,7 +140,10 @@ export class MentraStack extends Stack {
 
     const apiIntegration = new HttpLambdaIntegration("MentraApiIntegration", apiFunction);
 
+    const apiName = process.env.MENTRA_HTTP_API_NAME ?? `mentra-api-gateway-${this.account}-${this.region}`;
+
     const api = new HttpApi(this, "MentraHttpApi", {
+      apiName,
       corsPreflight: {
         allowHeaders: ["*"],
         allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],

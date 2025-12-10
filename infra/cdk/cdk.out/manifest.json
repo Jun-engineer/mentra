@@ -18,7 +18,7 @@
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::085141726968:role/cdk-hnb659fds-deploy-role-085141726968-ap-northeast-1",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::085141726968:role/cdk-hnb659fds-cfn-exec-role-085141726968-ap-northeast-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-085141726968-ap-northeast-1/70402cffed56fb165902ca5c7db46f44cceb314242c8134919b6a630c36c66be.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-085141726968-ap-northeast-1/f31b48cc7e37c858930d976df77a4cdf9b0b4aee6b749ea8a149f3db96f43460.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
@@ -34,12 +34,6 @@
         "MentraPrereqStack.assets"
       ],
       "metadata": {
-        "/MentraPrereqStack/GithubActionsRole/Resource": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "GithubActionsRoleF5CC769F"
-          }
-        ],
         "/MentraPrereqStack/GithubDeployRoleArn": [
           {
             "type": "aws:cdk:logicalId",
@@ -90,7 +84,7 @@
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::085141726968:role/cdk-hnb659fds-deploy-role-085141726968-ap-northeast-1",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::085141726968:role/cdk-hnb659fds-cfn-exec-role-085141726968-ap-northeast-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-085141726968-ap-northeast-1/5a9a13197393333903fa1698c4d2fa92f3dcaec69a65d73f670d57dcd4c563e1.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-085141726968-ap-northeast-1/c3b79a7392758b9773ce20a517fae3d613c7f1592e5ba3ed43b78f0e964f8da9.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [

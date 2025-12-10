@@ -25,7 +25,7 @@ export class MentraPrereqStack extends Stack {
     const githubOwner = props?.github?.owner ?? process.env.MENTRA_GITHUB_OWNER ?? "Jun-engineer";
     const githubRepo = props?.github?.repo ?? process.env.MENTRA_GITHUB_REPO ?? "mentra";
     const githubBranch = props?.github?.branch ?? process.env.MENTRA_GITHUB_BRANCH ?? "main";
-    const githubRoleName = props?.github?.roleName ?? process.env.MENTRA_GITHUB_ROLE ?? "MentraGithubDeployRole";
+    const githubRoleName = props?.github?.roleName ?? process.env.MENTRA_GITHUB_ROLE ?? "mentra-github-deploy-role";
     const explicitRoleArn = props?.github?.roleArn ?? process.env.MENTRA_GITHUB_ROLE_ARN;
     const explicitProviderArn = props?.github?.providerArn ?? process.env.MENTRA_GITHUB_PROVIDER_ARN;
     const providerStrategy = (props?.github?.providerStrategy ?? process.env.MENTRA_GITHUB_PROVIDER_STRATEGY ?? "import").toLowerCase();
