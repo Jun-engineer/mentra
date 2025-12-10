@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { appConfig } from "@/lib/config";
 import { fetchMenuItem, fetchMenuItems } from "@/lib/menu-service";
 import type { MenuItem } from "@/data/menu";
 import { slugify } from "@/data/menu";
 
 export const dynamic = "force-static";
+export const dynamicParams = false;
 
 export async function generateStaticParams(): Promise<Array<{ itemId: string }>> {
+  if (!appConfig.apiBaseUrl) {
+    return [];
+  }
   try {
     const items = await fetchMenuItems({ cache: "force-cache" });
     return items.map(item => ({ itemId: item.id }));
@@ -22,6 +27,11 @@ export async function generateMetadata({
 }: {
   params: { itemId: string };
 }): Promise<Metadata> {
+  if (!appConfig.apiBaseUrl) {
+    return {
+      title: "Training Item • Mentra"
+    };
+  }
   try {
     const item = await fetchMenuItem(params.itemId, { cache: "force-cache" });
 
@@ -44,6 +54,9 @@ export async function generateMetadata({
 }
 
 export default async function ItemPage({ params }: { params: { itemId: string } }) {
+  if (!appConfig.apiBaseUrl) {
+    notFound();
+  }
   let item: MenuItem | null = null;
   try {
     item = await fetchMenuItem(params.itemId, { cache: "force-cache" });
