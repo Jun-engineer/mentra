@@ -74,23 +74,28 @@ export class MentraStack extends Stack {
 
     const inferredBucketName = props?.site?.bucketName ?? process.env.MENTRA_SITE_BUCKET ?? `mentra-frontend-${this.account}-${this.region}`;
 
-    const siteBucket = new Bucket(this, "FrontendBucket", {
-      bucketName: inferredBucketName,
-      versioned: true,
-      encryption: BucketEncryption.S3_MANAGED,
-      enforceSSL: true,
-      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      removalPolicy: RemovalPolicy.RETAIN,
-      autoDeleteObjects: false
-    });
+    let siteBucket: Bucket | undefined;
+    if (!props?.site?.bucketName) {
+      siteBucket = new Bucket(this, "FrontendBucket", {
+        bucketName: inferredBucketName,
+        versioned: true,
+        encryption: BucketEncryption.S3_MANAGED,
+        enforceSSL: true,
+        blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+        removalPolicy: RemovalPolicy.RETAIN,
+        autoDeleteObjects: false
+      });
+    }
+
+    const frontendBucket = siteBucket ?? Bucket.fromBucketName(this, "FrontendBucket", inferredBucketName);
 
     const originAccessIdentity = new OriginAccessIdentity(this, "FrontendOAI", {
       comment: "Mentra frontend distribution access"
     });
 
-    siteBucket.grantRead(originAccessIdentity);
+    frontendBucket.grantRead(originAccessIdentity);
 
-    const bucketOrigin = S3BucketOrigin.withOriginAccessIdentity(siteBucket, {
+    const bucketOrigin = S3BucketOrigin.withOriginAccessIdentity(frontendBucket, {
       originAccessIdentity
     });
 
@@ -175,7 +180,7 @@ export class MentraStack extends Stack {
     });
 
     new CfnOutput(this, "FrontendBucketName", {
-      value: siteBucket.bucketName,
+      value: frontendBucket.bucketName,
       exportName: "MentraFrontendBucketName"
     });
 
