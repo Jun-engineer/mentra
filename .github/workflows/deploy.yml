@@ -74,7 +74,7 @@ jobs:
           MENTRA_GITHUB_ROLE_ARN: ${{ steps.prereq-outputs.outputs.deploy_role_arn }}
           MENTRA_GITHUB_PROVIDER_STRATEGY: import
           MENTRA_GITHUB_PROVIDER_ARN: ${{ steps.prereq-outputs.outputs.oidc_provider_arn }}
-        run: pnpm --dir infra/cdk exec cdk deploy MentraPrereqStack MentraStack --require-approval never
+        run: pnpm --dir infra/cdk exec cdk deploy MentraStack --require-approval never
 
       - name: Fetch stack outputs
         id: stack-outputs
