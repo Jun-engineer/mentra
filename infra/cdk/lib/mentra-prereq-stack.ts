@@ -25,7 +25,7 @@ export class MentraPrereqStack extends Stack {
     const githubBranch = props?.github?.branch ?? process.env.MENTRA_GITHUB_BRANCH ?? "main";
     const githubRoleName = props?.github?.roleName ?? process.env.MENTRA_GITHUB_ROLE ?? "MentraGithubDeployRole";
     const explicitProviderArn = props?.github?.providerArn ?? process.env.MENTRA_GITHUB_PROVIDER_ARN;
-    const providerStrategy = (props?.github?.providerStrategy ?? process.env.MENTRA_GITHUB_PROVIDER_STRATEGY ?? "create").toLowerCase();
+    const providerStrategy = (props?.github?.providerStrategy ?? process.env.MENTRA_GITHUB_PROVIDER_STRATEGY ?? "import").toLowerCase();
 
     if (explicitProviderArn) {
       this.provider = OpenIdConnectProvider.fromOpenIdConnectProviderArn(
