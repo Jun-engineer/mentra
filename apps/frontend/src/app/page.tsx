@@ -397,32 +397,36 @@ export default function Home() {
                   const isCategoryOpen = Boolean(openCategories[category.id]);
 
                   return (
-                    <article key={category.id} id={category.id} className="border-b border-amber-200 pb-4">
+                    <article key={category.id} id={category.id} className="pb-2">
                       <button
                         type="button"
                         onClick={() => toggleCategory(category.id)}
-                        className="flex w-full items-center justify-between gap-3 text-left"
+                        className="group flex w-full items-center justify-between gap-3 border-b border-amber-300 pb-2 text-left"
                         aria-expanded={isCategoryOpen}
                         aria-controls={`${category.id}-panel`}
                       >
-                        <h3 className="text-xl font-semibold text-neutral-900">{category.label}</h3>
+                        <h3 className="text-xl font-semibold text-neutral-900">
+                          <span className="border-b-2 border-transparent pb-1 transition group-hover:border-amber-400">
+                            {category.label}
+                          </span>
+                        </h3>
                         <span className="text-2xl leading-none text-amber-500" aria-hidden="true">
                           {isCategoryOpen ? "−" : "+"}
                         </span>
                       </button>
 
                       {isCategoryOpen && (
-                        <div id={`${category.id}-panel`} className="mt-3 space-y-3">
+                        <div id={`${category.id}-panel`} className="mt-3 space-y-2">
                           {category.subCategories.map(subCategory => {
                             const key = `${category.id}-${subCategory.id}`;
                             const isSubOpen = Boolean(openSubCategories[key]);
 
                             return (
-                              <section key={subCategory.id} className="rounded-2xl bg-white/60 p-3 transition hover:bg-white">
+                              <section key={subCategory.id} className="pl-2">
                                 <button
                                   type="button"
                                   onClick={() => toggleSubCategory(category.id, subCategory.id)}
-                                  className="flex w-full items-center justify-between gap-2 text-left"
+                                  className="flex w-full items-center justify-between gap-2 border-b border-neutral-200 pb-2 text-left"
                                   aria-expanded={isSubOpen}
                                   aria-controls={`${key}-panel`}
                                 >
@@ -433,12 +437,12 @@ export default function Home() {
                                 </button>
 
                                 {isSubOpen && (
-                                  <ul id={`${key}-panel`} className="mt-3 space-y-2">
+                                  <ul id={`${key}-panel`} className="mt-2 space-y-1">
                                     {subCategory.items.map(item => (
-                                      <li key={item.id} className="group flex items-center justify-between gap-3 rounded-xl border border-transparent p-2 transition hover:border-amber-200 hover:bg-amber-50">
+                                      <li key={item.id} className="group flex items-center justify-between gap-3 border-b border-dashed border-neutral-200 py-2">
                                         <Link
                                           href={`/items/${item.id}`}
-                                          className="flex-1 text-sm font-medium text-neutral-800"
+                                          className="flex-1 text-sm font-medium text-neutral-800 hover:underline"
                                         >
                                           {item.title}
                                         </Link>
