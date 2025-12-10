@@ -48,8 +48,25 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Fetch prerequisite stack outputs
+        id: prereq-outputs
+        run: |
+          STACK_NAME=MentraPrereqStack
+          OUTPUTS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs" --output json)
+          echo "deploy_role_arn=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubDeployRoleArn") | .OutputValue')" >> "$GITHUB_OUTPUT"
+          echo "oidc_provider_arn=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubOidcProviderArn") | .OutputValue')" >> "$GITHUB_OUTPUT"
+
       - name: Bootstrap CDK environment
-        run: pnpm --dir infra/cdk exec cdk bootstrap
+        env:
+          DEPLOY_ROLE_ARN: ${{ steps.prereq-outputs.outputs.deploy_role_arn }}
+        run: |
+          if [ -z "$DEPLOY_ROLE_ARN" ]; then
+            echo "MentraPrereqStack did not return GithubDeployRoleArn output" >&2
+            exit 1
+          fi
+          CDK_NEW_BOOTSTRAP=1 pnpm --dir infra/cdk exec cdk bootstrap \
+            --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess \
+            --trust "$DEPLOY_ROLE_ARN"
 
       - name: Deploy infrastructure
         run: pnpm --dir infra/cdk exec cdk deploy MentraPrereqStack MentraStack --require-approval never
