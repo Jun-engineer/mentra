@@ -10,8 +10,21 @@ export const dynamic = "force-static";
 
 export const dynamicParams = false;
 
-export function generateStaticParams(): Array<{ itemId: string }> {
-  return [];
+const PLACEHOLDER_ITEM_ID = "__mentra_placeholder__";
+
+export async function generateStaticParams(): Promise<{ itemId: string }[]> {
+  if (!appConfig.apiBaseUrl) {
+    return [{ itemId: PLACEHOLDER_ITEM_ID }];
+  }
+
+  try {
+    const items = await fetchMenuItems({ cache: "force-cache" });
+    const params = items.map(item => ({ itemId: item.id })).filter(entry => Boolean(entry.itemId));
+    return params.length ? params : [{ itemId: PLACEHOLDER_ITEM_ID }];
+  } catch (error) {
+    console.warn("Mentra export: failed to load menu items for static params", error);
+    return [{ itemId: PLACEHOLDER_ITEM_ID }];
+  }
 }
 
 export async function generateMetadata({
@@ -19,7 +32,7 @@ export async function generateMetadata({
 }: {
   params: { itemId: string };
 }): Promise<Metadata> {
-  if (!appConfig.apiBaseUrl) {
+  if (!appConfig.apiBaseUrl || params.itemId === PLACEHOLDER_ITEM_ID) {
     return {
       title: "Training Item • Mentra"
     };
@@ -46,7 +59,7 @@ export async function generateMetadata({
 }
 
 export default async function ItemPage({ params }: { params: { itemId: string } }) {
-  if (!appConfig.apiBaseUrl) {
+  if (!appConfig.apiBaseUrl || params.itemId === PLACEHOLDER_ITEM_ID) {
     notFound();
   }
   let item: MenuItem | null = null;
