@@ -103,7 +103,21 @@ export class MentraStack extends Stack {
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
         allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         compress: true
-      }
+      },
+      errorResponses: [
+        {
+          httpStatus: 404,
+          ttl: Duration.seconds(0),
+          responseHttpStatus: 200,
+          responsePagePath: "/items/__mentra_placeholder__/index.html"
+        },
+        {
+          httpStatus: 403,
+          ttl: Duration.seconds(0),
+          responseHttpStatus: 200,
+          responsePagePath: "/items/__mentra_placeholder__/index.html"
+        }
+      ]
     });
 
     const rootDir = path.join(__dirname, "../../..");
