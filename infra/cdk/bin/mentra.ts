@@ -23,7 +23,9 @@ const prereqStack = new MentraPrereqStack(app, "MentraPrereqStack", {
 		branch: process.env.MENTRA_GITHUB_BRANCH ?? "main",
 		roleName: process.env.MENTRA_GITHUB_ROLE ?? "MentraGithubDeployRole",
 		providerArn: process.env.MENTRA_GITHUB_PROVIDER_ARN as string | undefined,
-		providerStrategy: process.env.MENTRA_GITHUB_PROVIDER_STRATEGY as "create" | "import" | undefined
+		providerStrategy: process.env.MENTRA_GITHUB_PROVIDER_STRATEGY as "create" | "import" | undefined,
+		roleStrategy: process.env.MENTRA_GITHUB_ROLE_STRATEGY as "create" | "import" | undefined,
+		roleArn: process.env.MENTRA_GITHUB_ROLE_ARN as string | undefined
 	}
 });
 
@@ -35,4 +37,11 @@ const appStack = new MentraStack(app, "MentraStack", {
 	}
 });
 
-appStack.addDependency(prereqStack);
+const dependencyPrefFlag = (process.env.MENTRA_INCLUDE_PREREQ_DEPENDENCY ?? "true").toLowerCase();
+const roleStrategy = (process.env.MENTRA_GITHUB_ROLE_STRATEGY ?? "create").toLowerCase();
+const providerStrategy = (process.env.MENTRA_GITHUB_PROVIDER_STRATEGY ?? "create").toLowerCase();
+const shouldDependOnPrereq = dependencyPrefFlag !== "false" && dependencyPrefFlag !== "0";
+
+if (shouldDependOnPrereq && (roleStrategy !== "import" || providerStrategy !== "import")) {
+	appStack.addDependency(prereqStack);
+}
