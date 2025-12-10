@@ -56,6 +56,19 @@ jobs:
           echo "deploy_role_arn=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubDeployRoleArn") | .OutputValue')" >> "$GITHUB_OUTPUT"
           echo "oidc_provider_arn=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubOidcProviderArn") | .OutputValue')" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve existing frontend bucket
+        id: frontend-bucket
+        run: |
+          if aws cloudformation describe-stacks --stack-name MentraStack >/tmp/stack.json 2>/tmp/stack.err; then
+            OUTPUTS=$(jq -r '.Stacks[0].Outputs' /tmp/stack.json)
+            BUCKET=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="FrontendBucketName") | .OutputValue')
+            if [ -n "$BUCKET" ] && [ "$BUCKET" != "null" ]; then
+              echo "bucket=$BUCKET" >>"$GITHUB_OUTPUT"
+            fi
+          else
+            cat /tmp/stack.err >&2 || true
+          fi
+
       - name: Bootstrap CDK environment
         env:
           DEPLOY_ROLE_ARN: ${{ steps.prereq-outputs.outputs.deploy_role_arn }}
@@ -74,6 +87,7 @@ jobs:
           MENTRA_GITHUB_ROLE_ARN: ${{ steps.prereq-outputs.outputs.deploy_role_arn }}
           MENTRA_GITHUB_PROVIDER_STRATEGY: import
           MENTRA_GITHUB_PROVIDER_ARN: ${{ steps.prereq-outputs.outputs.oidc_provider_arn }}
+          MENTRA_SITE_BUCKET: ${{ steps.frontend-bucket.outputs.bucket }}
         run: pnpm --dir infra/cdk exec cdk deploy MentraStack --require-approval never
 
       - name: Fetch stack outputs
