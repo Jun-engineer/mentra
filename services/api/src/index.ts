@@ -134,6 +134,15 @@ const getMenuItem = async (tenantId: string, itemId: string) => {
 const upsertMenuItem = async (tenantId: string, payload: z.infer<typeof upsertSchema>) => {
   const now = new Date().toISOString();
   const itemId = payload.itemId ?? randomUUID();
+  const existingItem = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `TENANT#${tenantId}#MENU`,
+        SK: `ITEM#${itemId}`
+      }
+    })
+  );
   const record: MenuRecord = {
     PK: `TENANT#${tenantId}#MENU`,
     SK: `ITEM#${itemId}`,
@@ -143,7 +152,7 @@ const upsertMenuItem = async (tenantId: string, payload: z.infer<typeof upsertSc
     description: payload.description?.trim() || undefined,
     videoUrl: payload.videoUrl,
     steps: payload.steps ?? [],
-    createdAt: now,
+    createdAt: (existingItem.Item as MenuRecord | undefined)?.createdAt ?? now,
     updatedAt: now
   };
 
@@ -230,7 +239,8 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
       return fromHttpError(error);
     }
 
+    const fallbackMessage = error instanceof Error ? error.message : "Internal server error";
     console.error("Unhandled Mentra API error", error);
-    return ok(500, { message: "Internal server error" });
+    return ok(500, { message: fallbackMessage });
   }
 };
