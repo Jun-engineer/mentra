@@ -480,9 +480,7 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-dashed border-amber-200 bg-amber-50/40 p-6 text-center text-sm text-amber-700">
-              Choose a menu item to open its training card.
-            </section>
+            
           </>
         ) : null}
       </main>
