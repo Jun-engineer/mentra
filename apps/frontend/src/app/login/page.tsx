@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -36,9 +37,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-amber-50 via-white to-white px-4 py-12">
       <div className="w-full max-w-md rounded-3xl border border-amber-100 bg-white p-8 shadow-xl">
-        <div className="mb-6 text-center">
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <Image src="/mentra-wordmark.png" alt="Mentra" width={200} height={60} priority className="h-auto w-48" />
           <h1 className="text-3xl font-semibold text-neutral-900">Sign in to Mentra</h1>
-          <p className="mt-2 text-sm text-neutral-500">Use one of the prepared demo accounts to explore the manual.</p>
+          <p className="mt-1 text-sm text-neutral-500">Use one of the prepared demo accounts to explore the manual.</p>
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import type { MenuCategory, MenuItem } from "@/data/menu";
@@ -324,8 +325,9 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <header className="border-b border-neutral-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" className="text-2xl font-semibold text-neutral-900">
-            Mentra Manual
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/icons/mentra-icon-64.png" alt="Mentra" width={40} height={40} className="h-10 w-10" priority />
+            <span className="text-2xl font-semibold text-neutral-900">Mentra Manual</span>
           </Link>
           {user ? (
             <div className="flex items-center gap-3 text-sm text-neutral-600">

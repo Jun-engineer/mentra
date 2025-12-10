@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
+import { Annotations, CfnOutput, Duration, RemovalPolicy, Stack, StackProps } from "aws-cdk-lib";
 import { AttributeType, BillingMode, ITable, Table } from "aws-cdk-lib/aws-dynamodb";
 import { HttpApi, CorsHttpMethod, HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
@@ -29,7 +29,13 @@ export class MentraStack extends Stack {
 
     const tenantTableMode = (props?.tenantTable?.mode ?? process.env.MENTRA_TENANT_TABLE_MODE ?? "create").toLowerCase();
     const tenantTableName = props?.tenantTable?.tableName ?? process.env.MENTRA_TABLE_NAME ?? "mentra-tenant-table";
-    const tenantTableArn = props?.tenantTable?.tableArn ?? process.env.MENTRA_TENANT_TABLE_ARN;
+    const rawTenantTableArn = props?.tenantTable?.tableArn ?? process.env.MENTRA_TENANT_TABLE_ARN;
+    const tenantTableArn = rawTenantTableArn && rawTenantTableArn.includes(`:${this.region}:`) ? rawTenantTableArn : undefined;
+    if (rawTenantTableArn && !tenantTableArn) {
+      Annotations.of(this).addWarning(
+        `Ignoring tenant table ARN ${rawTenantTableArn} because it does not match region ${this.region}.`
+      );
+    }
     let tenantTableNameForEnv = tenantTableName;
 
     if (tenantTableMode === "import" || tenantTableArn || process.env.MENTRA_TENANT_TABLE_IMPORT === "1") {
@@ -122,7 +128,7 @@ export class MentraStack extends Stack {
           projectRoot: rootDir,
           depsLockFilePath: path.join(rootDir, "pnpm-lock.yaml"),
           bundling: {
-            format: OutputFormat.ESM,
+            format: OutputFormat.CJS,
             target: "node20",
             externalModules: ["aws-sdk"],
             minify: true,

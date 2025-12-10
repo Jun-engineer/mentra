@@ -17,7 +17,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Mentra",
   description: "Multi-tenant training operations platform for restaurants",
-  manifest: "/manifest.json"
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/mentra-icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/mentra-icon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icons/mentra-icon-64.png", sizes: "64x64", type: "image/png" }
+    ],
+    shortcut: ["/icons/mentra-icon-32.png"],
+    apple: ["/apple-touch-icon.png"]
+  }
 };
 
 export const viewport: Viewport = {
