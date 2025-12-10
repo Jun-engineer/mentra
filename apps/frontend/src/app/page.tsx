@@ -131,8 +131,8 @@ const MenuItemForm = ({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4 py-8">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-black/30 px-4 py-8">
+      <div className="relative w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:px-8 max-h-[90vh]">
         <h2 className="text-2xl font-semibold text-neutral-900">
           {mode === "create" ? "Add Menu Item" : "Edit Menu Item"}
         </h2>
