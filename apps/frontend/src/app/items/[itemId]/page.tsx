@@ -7,9 +7,8 @@ import type { MenuItem } from "@/data/menu";
 import { slugify } from "@/data/menu";
 
 export const dynamic = "force-static";
-export const dynamicParams = false;
 
-export async function generateStaticParams(): Promise<Array<{ itemId: string }>> {
+export const generateStaticParams = async (): Promise<Array<{ itemId: string }>> => {
   if (!appConfig.apiBaseUrl) {
     return [];
   }
@@ -20,7 +19,7 @@ export async function generateStaticParams(): Promise<Array<{ itemId: string }>>
     console.warn("Mentra export: failed to load menu items for static params", error);
     return [];
   }
-}
+};
 
 export async function generateMetadata({
   params
