@@ -375,7 +375,6 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-3xl font-bold text-neutral-900">Training Library</h2>
-                  <p className="text-sm text-neutral-500">Browse categories to open the training cards.</p>
                 </div>
                 {statusMessage ? <p className="text-sm text-amber-600">{statusMessage}</p> : null}
               </div>
