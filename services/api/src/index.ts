@@ -33,14 +33,18 @@ const jsonHeaders = {
 const upsertSchema = z
   .object({
     itemId: z.string().optional(),
-    title: z.string().min(1, "Title is required"),
-    category: z.string().min(1, "Category is required"),
-    subcategory: z.string().min(1, "Subcategory is required"),
+    title: z.string().trim().min(1, "Title is required"),
+    category: z.string().trim().min(1, "Category is required"),
+    subcategory: z.string().trim().min(1, "Subcategory is required").optional(),
     description: z.string().trim().optional(),
-    videoUrl: z.string().url("Video URL must be valid").optional(),
+    videoUrl: z.string().trim().url("Video URL must be valid").optional(),
     steps: z.array(z.string().trim().min(1)).optional()
   })
-  .refine(data => Boolean(data.description) || Boolean(data.videoUrl), {
+  .refine(data => {
+    const hasDescription = typeof data.description === "string" && data.description.length > 0;
+    const hasVideo = typeof data.videoUrl === "string" && data.videoUrl.length > 0;
+    return hasDescription || hasVideo;
+  }, {
     message: "Provide a description or a video URL before posting",
     path: ["description"]
   });
@@ -50,7 +54,7 @@ type MenuRecord = {
   SK: string;
   title: string;
   category: string;
-  subcategory: string;
+  subcategory?: string;
   description?: string;
   videoUrl?: string;
   steps?: string[];
@@ -62,7 +66,7 @@ const toMenuResponse = (record: MenuRecord) => ({
   id: record.SK.replace(/^ITEM#/u, ""),
   title: record.title,
   category: record.category,
-  subcategory: record.subcategory,
+  subcategory: record.subcategory?.trim() || record.category || "General",
   description: record.description ?? null,
   videoUrl: record.videoUrl ?? null,
   steps: record.steps ?? [],
@@ -148,9 +152,9 @@ const upsertMenuItem = async (tenantId: string, payload: z.infer<typeof upsertSc
     SK: `ITEM#${itemId}`,
     title: payload.title,
     category: payload.category,
-    subcategory: payload.subcategory,
-    description: payload.description?.trim() || undefined,
-    videoUrl: payload.videoUrl,
+    subcategory: payload.subcategory ?? undefined,
+    description: payload.description && payload.description.length > 0 ? payload.description : undefined,
+    videoUrl: payload.videoUrl && payload.videoUrl.length > 0 ? payload.videoUrl : undefined,
     steps: payload.steps ?? [],
     createdAt: (existingItem.Item as MenuRecord | undefined)?.createdAt ?? now,
     updatedAt: now

@@ -5,7 +5,7 @@ export type UpsertMenuInput = {
   itemId?: string;
   title: string;
   category: string;
-  subcategory: string;
+  subcategory?: string;
   description?: string;
   videoUrl?: string;
   steps?: string[];
@@ -35,13 +35,23 @@ const asStringOrNull = (value: unknown): string | null => {
 };
 
 const ensureString = (value: unknown, fallback: string): string => {
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
   }
   if (typeof value === "number" && Number.isFinite(value)) {
     return String(value);
   }
   return fallback;
+};
+
+const asTrimmedStringOrEmpty = (value: unknown): string => {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim();
 };
 
 const buildUrl = (path: string) => {
@@ -61,11 +71,15 @@ const normalizeItem = (item: ApiMenuItem): MenuItem => {
     ? item.steps.map(step => ensureString(step, "")).filter(step => step.length > 0)
     : [];
 
+  const category = ensureString(item.category, "Uncategorized");
+  const subcategoryInput = asTrimmedStringOrEmpty(item.subcategory);
+  const subcategory = subcategoryInput || category || "General";
+
   return {
     id: idValue,
     title: ensureString(item.title, "Untitled Item"),
-    category: ensureString(item.category, "Uncategorized"),
-    subcategory: ensureString(item.subcategory, "General"),
+    category,
+    subcategory,
     description: asStringOrNull(item.description),
     videoUrl: asStringOrNull(item.videoUrl),
     steps,

@@ -13,6 +13,7 @@ type ModalState = {
   open: boolean;
   mode: "create" | "edit";
   item?: MenuItem;
+  initialValues?: Partial<FormValues>;
 };
 
 type FormValues = {
@@ -32,6 +33,55 @@ const defaultFormValues: FormValues = {
   videoUrl: "",
   steps: ""
 };
+
+type TemplateOption = {
+  id: string;
+  label: string;
+  category: string;
+  subcategory?: string;
+};
+
+type TemplateGroup = {
+  id: string;
+  title: string;
+  description?: string;
+  templates: TemplateOption[];
+};
+
+const ITEM_TEMPLATE_GROUPS: TemplateGroup[] = [
+  {
+    id: "training",
+    title: "Training",
+    description: "Single category for operational training content.",
+    templates: [
+      { id: "training", label: "Training", category: "Training" }
+    ]
+  },
+  {
+    id: "food",
+    title: "Food",
+    description: "Organize food playbooks by course type.",
+    templates: [
+      { id: "food-snacks", label: "Snacks", category: "Food", subcategory: "Snacks" },
+      { id: "food-sides", label: "Sides", category: "Food", subcategory: "Sides" },
+      { id: "food-main", label: "Main", category: "Food", subcategory: "Main" },
+      { id: "food-desert", label: "Desert", category: "Food", subcategory: "Desert" }
+    ]
+  },
+  {
+    id: "drink",
+    title: "Drink",
+    description: "Quickly spin up beverage cards by style.",
+    templates: [
+      { id: "drink-soft", label: "Soft Drink", category: "Drink", subcategory: "Soft Drink" },
+      { id: "drink-beer", label: "Beer", category: "Drink", subcategory: "Beer" },
+      { id: "drink-whiskey", label: "Whiskey", category: "Drink", subcategory: "Whiskey" },
+      { id: "drink-red", label: "Red Wine", category: "Drink", subcategory: "Red Wine" },
+      { id: "drink-white", label: "White Wine", category: "Drink", subcategory: "White Wine" },
+      { id: "drink-sake", label: "Sake", category: "Drink", subcategory: "Sake" }
+    ]
+  }
+];
 
 const buildFormValues = (source?: MenuItem | null): FormValues => {
   if (!source) {
@@ -74,6 +124,123 @@ const TrashIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const CreateChoiceModal = ({
+  onSelectTemplate,
+  onSelectCustom,
+  onClose
+}: {
+  onSelectTemplate: () => void;
+  onSelectCustom: () => void;
+  onClose: () => void;
+}) => (
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4 py-8">
+    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <h2 className="text-xl font-semibold text-neutral-900">Create new training card</h2>
+      <p className="mt-2 text-sm text-neutral-600">Start from a Mentra template or build a custom entry from scratch.</p>
+      <div className="mt-6 space-y-3">
+        <button
+          type="button"
+          onClick={onSelectTemplate}
+          className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-600 transition hover:border-amber-300 hover:bg-amber-100"
+        >
+          Use template
+          <span className="mt-1 block text-xs font-normal text-amber-700">Pick from Food, Drink, or Training playbooks.</span>
+        </button>
+        <button
+          type="button"
+          onClick={onSelectCustom}
+          className="w-full rounded-xl border border-neutral-200 px-4 py-3 text-left text-sm font-medium text-neutral-700 transition hover:border-neutral-300 hover:bg-neutral-50"
+        >
+          Customize
+          <span className="mt-1 block text-xs font-normal text-neutral-600">Open a blank form and fill everything manually.</span>
+        </button>
+      </div>
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-600 transition hover:bg-neutral-100"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const TemplateSelectionModal = ({
+  groups,
+  onSelect,
+  onBack,
+  onClose
+}: {
+  groups: TemplateGroup[];
+  onSelect: (template: TemplateOption) => void;
+  onBack: () => void;
+  onClose: () => void;
+}) => (
+  <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4 py-8">
+    <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-neutral-900">Choose a template</h2>
+          <p className="mt-1 text-sm text-neutral-600">Templates pre-fill category details so you can focus on the content.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full border border-neutral-200 px-3 py-1 text-sm text-neutral-600 transition hover:bg-neutral-100"
+        >
+          Close
+        </button>
+      </div>
+      <div className="mt-6 grid gap-5">
+        {groups.map(group => (
+          <section key={group.id} className="rounded-2xl border border-neutral-200 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900">{group.title}</h3>
+                {group.description ? <p className="text-xs text-neutral-500">{group.description}</p> : null}
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.templates.map(template => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => onSelect(template)}
+                  className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-700 transition hover:border-amber-300 hover:bg-amber-100"
+                >
+                  {template.label}
+                  <span className="mt-1 block text-xs font-normal text-amber-600">
+                    {template.subcategory ? `${template.category} • ${template.subcategory}` : template.category}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+      <div className="mt-6 flex justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-600 transition hover:bg-neutral-100"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-white transition hover:bg-neutral-900"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const FloatingAddButton = ({ onClick }: { onClick: () => void }) => (
   <button
     type="button"
@@ -88,17 +255,19 @@ const FloatingAddButton = ({ onClick }: { onClick: () => void }) => (
 const MenuItemForm = ({
   mode,
   item,
+  initialValues,
   onSubmit,
   onCancel,
   saving
 }: {
   mode: "create" | "edit";
   item?: MenuItem;
+  initialValues?: Partial<FormValues>;
   onSubmit: (values: UpsertMenuInput) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
 }) => {
-  const [values, setValues] = useState<FormValues>(() => buildFormValues(item));
+  const [values, setValues] = useState<FormValues>(() => ({ ...buildFormValues(item), ...initialValues }));
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (field: keyof FormValues) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -117,7 +286,7 @@ const MenuItemForm = ({
       itemId: item?.id,
       title: values.title.trim(),
       category: values.category.trim(),
-      subcategory: values.subcategory.trim(),
+      subcategory: values.subcategory.trim() || undefined,
       description: values.description.trim() || undefined,
       videoUrl: values.videoUrl.trim() || undefined,
       steps
@@ -162,9 +331,8 @@ const MenuItemForm = ({
               />
             </label>
             <label className="flex flex-col gap-2 text-sm text-neutral-700">
-              <span>Subcategory</span>
+              <span>Subcategory <span className="text-xs text-neutral-400">(optional for Training)</span></span>
               <input
-                required
                 type="text"
                 value={values.subcategory}
                 onChange={handleChange("subcategory")}
@@ -230,6 +398,7 @@ export default function Home() {
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openSubCategories, setOpenSubCategories] = useState<Record<string, boolean>>({});
   const [modalState, setModalState] = useState<ModalState>({ open: false, mode: "create" });
+  const [createFlowStep, setCreateFlowStep] = useState<"idle" | "choice" | "template">("idle");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -284,14 +453,48 @@ export default function Home() {
 
   const groupedCategories: MenuCategory[] = useMemo(() => groupMenuItems(menuItems), [menuItems]);
 
-  const closeModal = () => setModalState({ open: false, mode: "create" });
+  const closeModal = () => {
+    setModalState({ open: false, mode: "create", item: undefined, initialValues: undefined });
+    setCreateFlowStep("idle");
+  };
 
   const handleCreateClick = () => {
-    setModalState({ open: true, mode: "create" });
+    setCreateFlowStep("choice");
+  };
+
+  const handleCreateCustom = () => {
+    setModalState({ open: true, mode: "create", initialValues: undefined });
+    setCreateFlowStep("idle");
+  };
+
+  const handleCreateWithTemplate = () => {
+    setCreateFlowStep("template");
+  };
+
+  const handleTemplateSelect = (template: TemplateOption) => {
+    setModalState({
+      open: true,
+      mode: "create",
+      initialValues: {
+        category: template.category,
+        subcategory: template.subcategory ?? "",
+        title: template.label
+      }
+    });
+    setCreateFlowStep("idle");
+  };
+
+  const handleTemplateFlowClose = () => {
+    setCreateFlowStep("idle");
+  };
+
+  const handleTemplateBack = () => {
+    setCreateFlowStep("choice");
   };
 
   const handleEditClick = (item: MenuItem) => {
-    setModalState({ open: true, mode: "edit", item });
+    setCreateFlowStep("idle");
+    setModalState({ open: true, mode: "edit", item, initialValues: undefined });
   };
 
   const handleDeleteClick = async (item: MenuItem) => {
@@ -487,11 +690,29 @@ export default function Home() {
         ) : null}
       </main>
 
+      {isAdmin && createFlowStep === "choice" ? (
+        <CreateChoiceModal
+          onSelectTemplate={handleCreateWithTemplate}
+          onSelectCustom={handleCreateCustom}
+          onClose={handleTemplateFlowClose}
+        />
+      ) : null}
+
+      {isAdmin && createFlowStep === "template" ? (
+        <TemplateSelectionModal
+          groups={ITEM_TEMPLATE_GROUPS}
+          onSelect={handleTemplateSelect}
+          onBack={handleTemplateBack}
+          onClose={handleTemplateFlowClose}
+        />
+      ) : null}
+
       {isAdmin && modalState.open ? (
         <MenuItemForm
-          key={modalState.item?.id ?? "new"}
+          key={modalState.item?.id ?? `new-${modalState.initialValues?.category ?? "blank"}`}
           mode={modalState.mode}
           item={modalState.item}
+          initialValues={modalState.initialValues}
           onSubmit={handleSubmit}
           onCancel={closeModal}
           saving={saving}

@@ -36,12 +36,16 @@ export const groupMenuItems = (items: MenuItem[]): MenuCategory[] => {
   const categoryMap = new Map<string, { label: string; subCategories: Map<string, MenuSubCategory> }>();
 
   for (const item of items) {
-    const categoryId = slugify(item.category || "uncategorized");
-    const subcategoryId = slugify(item.subcategory || "general");
+    const trimmedCategory = item.category?.trim() ?? "";
+    const trimmedSubcategory = item.subcategory?.trim() ?? "";
+    const fallbackSubcategoryLabel = trimmedSubcategory || trimmedCategory || "General";
+
+    const categoryId = slugify(trimmedCategory || "uncategorized");
+    const subcategoryId = slugify(trimmedSubcategory || trimmedCategory || "general");
 
     if (!categoryMap.has(categoryId)) {
       categoryMap.set(categoryId, {
-        label: item.category || "Uncategorized",
+        label: trimmedCategory || "Uncategorized",
         subCategories: new Map()
       });
     }
@@ -51,7 +55,7 @@ export const groupMenuItems = (items: MenuItem[]): MenuCategory[] => {
     if (!categoryEntry.subCategories.has(subcategoryId)) {
       categoryEntry.subCategories.set(subcategoryId, {
         id: subcategoryId,
-        label: item.subcategory || "General",
+        label: fallbackSubcategoryLabel,
         items: []
       });
     }
