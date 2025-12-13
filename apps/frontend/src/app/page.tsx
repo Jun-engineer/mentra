@@ -180,7 +180,7 @@ const TemplateSelectionModal = ({
   onClose: () => void;
 }) => (
   <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4 py-8">
-    <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+    <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl sm:p-8 max-h-[85vh] overflow-y-auto">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-neutral-900">Choose a template</h2>

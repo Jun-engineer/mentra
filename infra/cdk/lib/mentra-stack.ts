@@ -109,13 +109,13 @@ export class MentraStack extends Stack {
           httpStatus: 404,
           ttl: Duration.seconds(0),
           responseHttpStatus: 200,
-          responsePagePath: "/items/__mentra_placeholder__/index.html"
+          responsePagePath: "/index.html"
         },
         {
           httpStatus: 403,
           ttl: Duration.seconds(0),
           responseHttpStatus: 200,
-          responsePagePath: "/items/__mentra_placeholder__/index.html"
+          responsePagePath: "/index.html"
         }
       ]
     });
@@ -165,7 +165,7 @@ export class MentraStack extends Stack {
       apiName,
       corsPreflight: {
         allowHeaders: ["*"],
-        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.DELETE, CorsHttpMethod.OPTIONS],
         allowOrigins: ["*"]
       }
     });
@@ -184,7 +184,7 @@ export class MentraStack extends Stack {
 
     api.addRoutes({
       path: "/menu/{tenantId}/{itemId}",
-      methods: [HttpMethod.GET],
+      methods: [HttpMethod.GET, HttpMethod.DELETE],
       integration: apiIntegration
     });
 

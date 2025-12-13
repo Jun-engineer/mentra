@@ -1,0 +1,36 @@
+```mermaid
+graph TD
+    A[Start Registration] --> B{User Type}
+    B -->|Privileged| C[Submit Privileged Access Request]
+    B -->|Normal| N[Admin Initiates Staff Invite]
+
+    %% Privileged lane
+    C --> D[Store request in Approval Queue]
+    D --> E[Notify Operators]
+    E --> F{Operator Reviews Request}
+    F -->|Reject| G[Notify requester of denial]
+    G --> H[End]
+    F -->|Approve| I[Operator runs Admin-Seeding Tool]
+    I --> J[Identity Provider: Create Admin User]
+    J --> K[Mark user as FORCE_PASSWORD_CHANGE]
+    K --> L[Send Admin Invite Email]
+    L --> M[Privileged User sets password & MFA]
+    M --> H
+
+    %% Normal lane
+    N --> O[Frontend: POST /users/invite]
+    O --> P[API validates admin JWT & role]
+    P --> Q[Create staff invite + token]
+    Q --> R[Send invitation email]
+    R --> S[User sets password]
+    S --> T[Assign default role = staff]
+    T --> H
+
+    H[Ready to Sign In]
+
+    classDef manual fill:#fff0d9,stroke:#f59e0b,stroke-width:2px,color:#92400e;
+    classDef automated fill:#f3f4f6,stroke:#6b7280,stroke-width:1px,color:#111827;
+    class C,E,F,G,I,L,M,N,O,P,Q,R,S,T manual;
+    class D,J,K automated;
+    class A,B,H automated;
+```
