@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { PLACEHOLDER_ITEM_ID } from "@/app/items/[itemId]/constants";
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type CSSProperties, type FormEvent } from "react";
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { useSensor, useSensors } from "@dnd-kit/core";
@@ -338,11 +339,22 @@ const CategoryPanel = ({ category, isOpen, onToggle, isAdmin, children }: Catego
 
   return (
     <article ref={setNodeRef} style={style} className="pb-2">
-      <div className="group flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
+        {isAdmin ? (
+          <button
+            type="button"
+            aria-label={`Reorder ${category.label}`}
+            className="mt-1 flex h-9 w-9 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripIcon className="h-4 w-4" />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onToggle}
-          className="flex flex-1 items-center justify-between gap-3 border-b border-amber-300 pb-2 text-left"
+          className="group flex flex-1 items-center justify-between gap-3 border-b border-amber-300 pb-2 text-left"
           aria-expanded={isOpen}
           aria-controls={`${category.id}-panel`}
         >
@@ -355,17 +367,6 @@ const CategoryPanel = ({ category, isOpen, onToggle, isAdmin, children }: Catego
             {isOpen ? "−" : "+"}
           </span>
         </button>
-        {isAdmin ? (
-          <button
-            type="button"
-            aria-label={`Reorder ${category.label}`}
-            className="mt-[2px] hidden rounded-full border border-neutral-200 bg-white p-2 text-sm text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none group-hover:inline-flex focus:inline-flex"
-            {...attributes}
-            {...listeners}
-          >
-            ::
-          </button>
-        ) : null}
       </div>
       {isOpen ? children : null}
     </article>
@@ -490,8 +491,15 @@ const MenuItemRow = ({ item, categoryId, subcategoryId, isAdmin, onEdit, onDelet
       className="group flex items-center justify-between gap-3 rounded-lg border border-transparent px-2 py-2"
     >
       <Link
-        href={`/items/${item.id}`}
+        href={{
+          pathname: "/items/[itemId]",
+          query: {
+            itemId: PLACEHOLDER_ITEM_ID,
+            id: item.id
+          }
+        }}
         className="flex-1 text-sm font-medium text-neutral-800 hover:underline"
+        prefetch={false}
       >
         {item.title}
       </Link>
@@ -541,6 +549,17 @@ const buildFormValues = (source?: MenuItem | null): FormValues => {
     steps: (source.steps ?? []).join("\n")
   };
 };
+
+const GripIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" aria-hidden="true" className={className} focusable="false">
+    <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+    <circle cx="6" cy="10" r="1.5" fill="currentColor" />
+    <circle cx="6" cy="14" r="1.5" fill="currentColor" />
+    <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+    <circle cx="12" cy="10" r="1.5" fill="currentColor" />
+    <circle cx="12" cy="14" r="1.5" fill="currentColor" />
+  </svg>
+);
 
 const PencilIcon = ({ className }: { className?: string }) => (
   <svg

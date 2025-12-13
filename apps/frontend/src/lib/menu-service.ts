@@ -30,6 +30,7 @@ type ApiMenuItem = {
 
 type FetchConfig = {
   cache?: RequestInit["cache"];
+  signal?: AbortSignal;
 };
 
 const defaultOrdering: MenuOrdering = {
@@ -137,7 +138,8 @@ const normalizeOrdering = (value: unknown): MenuOrdering => {
 
 export const fetchMenuState = async (config: FetchConfig = {}): Promise<MenuState> => {
   const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}`), {
-    cache: config.cache ?? "no-store"
+    cache: config.cache ?? "no-store",
+    signal: config.signal
   });
 
   if (!response.ok) {
@@ -156,7 +158,8 @@ export const fetchMenuState = async (config: FetchConfig = {}): Promise<MenuStat
 
 export const fetchMenuItem = async (itemId: string, config: FetchConfig = {}): Promise<MenuItem | null> => {
   const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}/${itemId}`), {
-    cache: config.cache ?? "no-store"
+    cache: config.cache ?? "no-store",
+    signal: config.signal
   });
 
   if (response.status === 404) {

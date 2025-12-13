@@ -2,15 +2,25 @@
 
 import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { appConfig } from "@/lib/config";
 import type { MenuItem } from "@/data/menu";
 import { slugify } from "@/data/menu";
+import { fetchMenuItem } from "@/lib/menu-service";
 import { PLACEHOLDER_ITEM_ID } from "./constants";
 
 type FetchState = "idle" | "loading" | "loaded" | "not-found" | "error";
 
 export default function ItemPageClient({ itemId }: { itemId: string }) {
-  const hasValidId = Boolean(itemId && itemId !== PLACEHOLDER_ITEM_ID);
+  const searchParams = useSearchParams();
+  const queryItemId = searchParams.get("id") ?? "";
+  const resolvedItemId = itemId && itemId !== PLACEHOLDER_ITEM_ID
+    ? itemId
+    : queryItemId && queryItemId !== PLACEHOLDER_ITEM_ID
+      ? queryItemId
+      : "";
+
+  const hasValidId = resolvedItemId.length > 0;
   const [item, setItem] = useState<MenuItem | null>(null);
   const [state, setState] = useState<FetchState>("idle");
 
@@ -20,41 +30,39 @@ export default function ItemPageClient({ itemId }: { itemId: string }) {
     }
 
     const controller = new AbortController();
+
     async function loadItem() {
       startTransition(() => {
         setState("loading");
         setItem(null);
       });
-      try {
-        const response = await fetch(
-          `${appConfig.apiBaseUrl}/menu/${encodeURIComponent(appConfig.tenantId)}/${encodeURIComponent(itemId)}`,
-          {
-            signal: controller.signal,
-            headers: { "Content-Type": "application/json" },
-            cache: "no-store"
-          }
-        );
 
-        if (!response.ok) {
+      try {
+        const fetchedItem = await fetchMenuItem(resolvedItemId, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+
+        if (!fetchedItem) {
           startTransition(() => {
-            setState(response.status === 404 ? "not-found" : "error");
+            setState("not-found");
             setItem(null);
           });
           return;
         }
 
-        const data: MenuItem = await response.json();
         startTransition(() => {
-          setItem(data);
+          setItem(fetchedItem);
           setState("loaded");
         });
       } catch (error) {
         if ((error as { name?: string }).name === "AbortError") {
           return;
         }
-        console.warn("Mentra client: failed to load menu item", itemId, error);
+        console.warn("Mentra client: failed to load menu item", resolvedItemId, error);
         startTransition(() => {
           setState("error");
+          setItem(null);
         });
       }
     }
@@ -64,7 +72,7 @@ export default function ItemPageClient({ itemId }: { itemId: string }) {
     return () => {
       controller.abort();
     };
-  }, [hasValidId, itemId]);
+  }, [hasValidId, resolvedItemId]);
 
   const effectiveState: FetchState = !hasValidId
     ? "not-found"
