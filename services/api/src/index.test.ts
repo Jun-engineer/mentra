@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 
 let handler: (event: APIGatewayProxyEventV2) => Promise<APIGatewayProxyResultV2>;
@@ -67,18 +68,32 @@ describe("handler", () => {
   });
 
   it("lists menu items", async () => {
-    const sendSpy = vi.spyOn(docClient, "send").mockResolvedValueOnce({
-      Items: [
-        {
-          PK: "TENANT#tenant-1#MENU",
-          SK: "ITEM#abc123",
-          title: "Signature burger",
-          category: "Foods",
-          subcategory: "Main",
-          steps: ["Step 1"]
-        }
-      ]
-    } as never);
+    const sendSpy = vi.spyOn(docClient, "send").mockImplementation(async command => {
+      if (command instanceof QueryCommand) {
+        return {
+          Items: [
+            {
+              PK: "TENANT#tenant-1#MENU",
+              SK: "ITEM#abc123",
+              title: "Signature burger",
+              category: "Foods",
+              subcategory: "Main",
+              steps: ["Step 1"]
+            }
+          ]
+        } as never;
+      }
+
+      if (command instanceof GetCommand) {
+        return {} as never;
+      }
+
+      if (command instanceof PutCommand) {
+        return {} as never;
+      }
+
+      throw new Error(`Unexpected command: ${command.constructor.name}`);
+    });
 
     const response = await handler(
       mockEvent({
@@ -90,6 +105,7 @@ describe("handler", () => {
     );
 
     expect(sendSpy).toHaveBeenCalled();
+    expect(sendSpy).toHaveBeenCalledTimes(3);
     expect(response.statusCode).toBe(200);
     const payload = JSON.parse(response.body ?? "{}");
     expect(payload.items).toHaveLength(1);
