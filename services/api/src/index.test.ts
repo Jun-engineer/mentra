@@ -112,7 +112,7 @@ describe("handler", () => {
     expect(payload.items[0].id).toBe("abc123");
   });
 
-  it("returns training playlist", async () => {
+  it("returns training menu", async () => {
     const sendSpy = vi.spyOn(docClient, "send").mockImplementation(async command => {
       if (command instanceof QueryCommand) {
         return {
@@ -163,7 +163,7 @@ describe("handler", () => {
     expect(payload.items[0].id).toBe("abc123");
   });
 
-  it("updates training playlist", async () => {
+  it("updates training menu", async () => {
     const sendSpy = vi.spyOn(docClient, "send").mockImplementation(async command => {
       if (command instanceof PutCommand) {
         expect(command.input.Item).toMatchObject({ itemIds: ["abc123", "def456"] });

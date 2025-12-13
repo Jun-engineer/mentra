@@ -208,7 +208,7 @@ export const fetchTrainingPlaylist = async (config: FetchConfig = {}): Promise<T
   }
 
   if (!response.ok) {
-    throw new Error(`Failed to load training playlist (${response.status})`);
+    throw new Error(`Failed to load training menu (${response.status})`);
   }
 
   const data = (await response.json()) as { itemIds?: unknown; items?: unknown };
@@ -237,7 +237,7 @@ export const updateTrainingPlaylist = async (itemIds: string[]): Promise<void> =
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || `Failed to update training playlist (status ${response.status})`);
+    throw new Error(message || `Failed to update training menu (status ${response.status})`);
   }
 };
 
