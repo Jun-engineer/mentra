@@ -502,13 +502,7 @@ const MenuItemRow = ({ item, categoryId, subcategoryId, isAdmin, onEdit, onDelet
         </button>
       ) : null}
       <Link
-        href={{
-          pathname: "/items/[itemId]",
-          query: {
-            itemId: PLACEHOLDER_ITEM_ID,
-            id: item.id
-          }
-        }}
+        href={`/items/${PLACEHOLDER_ITEM_ID}?id=${encodeURIComponent(item.id)}`}
         className="flex-1 text-sm font-medium text-neutral-800 hover:underline"
         prefetch={false}
       >
