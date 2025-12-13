@@ -97,7 +97,7 @@ export default function ItemPageClient({ itemId }: { itemId: string }) {
     return (
       <>
         <header className="space-y-2">
-          <nav className="text-xs uppercase tracking-[0.3em] text-amber-500">
+          <nav className="text-xs uppercase tracking-[0.3em] text-blue-500">
             <Link href="/" className="hover:underline">
               Mentra
             </Link>
@@ -109,13 +109,13 @@ export default function ItemPageClient({ itemId }: { itemId: string }) {
             <span className="text-neutral-500">{currentItem.subcategory}</span>
           </nav>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-500">Training Card</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-blue-500">Training Card</p>
             <h1 className="text-4xl font-bold text-neutral-900 sm:text-5xl">{currentItem.title}</h1>
             <p className="mt-3 text-base text-neutral-700">{currentItem.description ?? "Details coming soon."}</p>
           </div>
         </header>
 
-        <section className="overflow-hidden rounded-3xl border border-amber-100 bg-neutral-100 shadow-sm">
+        <section className="overflow-hidden rounded-3xl border border-blue-100 bg-neutral-100 shadow-sm">
           {currentItem.videoUrl ? (
             <iframe
               src={currentItem.videoUrl}
@@ -131,7 +131,7 @@ export default function ItemPageClient({ itemId }: { itemId: string }) {
           )}
         </section>
 
-        <section className="space-y-3 rounded-3xl border border-amber-100 bg-white p-6 shadow-sm">
+        <section className="space-y-3 rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-neutral-900">Quick Steps</h2>
           {currentItem.steps.length ? (
             <ol className="list-decimal space-y-2 pl-5 text-sm leading-6 text-neutral-700">

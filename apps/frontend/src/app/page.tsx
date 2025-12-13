@@ -354,16 +354,16 @@ const CategoryPanel = ({ category, isOpen, onToggle, isAdmin, children }: Catego
         <button
           type="button"
           onClick={onToggle}
-          className="group flex flex-1 items-center justify-between gap-3 border-b border-amber-300 pb-2 text-left"
+          className="group flex flex-1 items-center justify-between gap-3 border-b border-blue-300 pb-2 text-left"
           aria-expanded={isOpen}
           aria-controls={`${category.id}-panel`}
         >
           <h3 className="text-xl font-semibold text-neutral-900">
-            <span className="border-b-2 border-transparent pb-1 transition group-hover:border-amber-400">
+            <span className="border-b-2 border-transparent pb-1 transition group-hover:border-blue-400">
               {category.label}
             </span>
           </h3>
-          <span className="text-2xl leading-none text-amber-500" aria-hidden="true">
+          <span className="text-2xl leading-none text-blue-500" aria-hidden="true">
             {isOpen ? "−" : "+"}
           </span>
         </button>
@@ -421,7 +421,7 @@ const SubcategoryPanel = ({ categoryId, subcategory, isOpen, onToggle, isAdmin, 
           aria-controls={`${categoryId}-${subcategory.id}-panel`}
         >
           <span className="text-base font-medium text-neutral-800">{subcategory.label}</span>
-          <span className="text-xl leading-none text-amber-500" aria-hidden="true">
+          <span className="text-xl leading-none text-blue-500" aria-hidden="true">
             {isOpen ? "−" : "+"}
           </span>
         </button>
@@ -450,7 +450,7 @@ const SubcategoryDropZone = ({ categoryId, subcategoryId, children }: Subcategor
   return (
     <div
       ref={setNodeRef}
-      className={`mt-2 space-y-1 rounded-lg ${isOver ? "border border-dashed border-amber-400 bg-amber-50/60 p-2" : ""}`}
+      className={`mt-2 space-y-1 rounded-lg ${isOver ? "border border-dashed border-blue-400 bg-blue-50/60 p-2" : ""}`}
     >
       {children}
     </div>
@@ -513,7 +513,7 @@ const MenuItemRow = ({ item, categoryId, subcategoryId, isAdmin, onEdit, onDelet
           <button
             type="button"
             onClick={onEdit}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 bg-white text-amber-600 transition hover:bg-amber-100"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-600 transition hover:bg-blue-100"
             aria-label={`Edit ${item.title}`}
           >
             <PencilIcon className="h-4 w-4" />
@@ -601,10 +601,10 @@ const CreateChoiceModal = ({
         <button
           type="button"
           onClick={onSelectTemplate}
-          className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-600 transition hover:border-amber-300 hover:bg-amber-100"
+          className="w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-left text-sm font-medium text-blue-600 transition hover:border-blue-300 hover:bg-blue-100"
         >
           Use template
-          <span className="mt-1 block text-xs font-normal text-amber-700">Pick from Food, Drink, or Training playbooks.</span>
+          <span className="mt-1 block text-xs font-normal text-blue-700">Pick from Food, Drink, or Training playbooks.</span>
         </button>
         <button
           type="button"
@@ -690,7 +690,7 @@ const TemplateSeedModal = ({
           type="button"
           onClick={onCreate}
           disabled={creating}
-          className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-70"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {creating ? "Creating…" : "Create sample content"}
         </button>
@@ -703,7 +703,7 @@ const FloatingAddButton = ({ onClick }: { onClick: () => void }) => (
   <button
     type="button"
     onClick={onClick}
-    className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500 text-3xl font-semibold text-white shadow-lg transition hover:bg-amber-600 focus:outline-none focus:ring-4 focus:ring-amber-300"
+    className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-3xl font-semibold text-white shadow-lg transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300"
     aria-label="Add menu item"
   >
     +
@@ -775,7 +775,7 @@ const MenuItemForm = ({
                 type="text"
                 value={values.title}
                 onChange={handleChange("title")}
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </label>
             <label className="flex flex-col gap-2 text-sm text-neutral-700">
@@ -785,7 +785,7 @@ const MenuItemForm = ({
                 type="text"
                 value={values.category}
                 onChange={handleChange("category")}
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </label>
             <label className="flex flex-col gap-2 text-sm text-neutral-700">
@@ -794,7 +794,7 @@ const MenuItemForm = ({
                 type="text"
                 value={values.subcategory}
                 onChange={handleChange("subcategory")}
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </label>
             <label className="flex flex-col gap-2 text-sm text-neutral-700">
@@ -804,7 +804,7 @@ const MenuItemForm = ({
                 value={values.videoUrl}
                 onChange={handleChange("videoUrl")}
                 placeholder="https://..."
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               />
             </label>
           </div>
@@ -814,7 +814,7 @@ const MenuItemForm = ({
             <textarea
               value={values.description}
               onChange={handleChange("description")}
-              className="min-h-[90px] rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+              className="min-h-[90px] rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
           </label>
 
@@ -823,7 +823,7 @@ const MenuItemForm = ({
             <textarea
               value={values.steps}
               onChange={handleChange("steps")}
-              className="min-h-[120px] rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+              className="min-h-[120px] rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
           </label>
 
@@ -840,7 +840,7 @@ const MenuItemForm = ({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {saving ? "Saving..." : mode === "create" ? "Create" : "Save changes"}
             </button>
@@ -1258,7 +1258,7 @@ export default function Home() {
           ) : (
             <Link
               href="/login"
-              className="rounded-full border border-amber-300 px-4 py-1 text-sm font-medium text-amber-600 transition hover:bg-amber-50"
+              className="rounded-full border border-blue-300 px-4 py-1 text-sm font-medium text-blue-600 transition hover:bg-blue-50"
             >
               Log in
             </Link>
@@ -1272,12 +1272,12 @@ export default function Home() {
         ) : null}
 
         {!loading && !user ? (
-          <section className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 rounded-3xl border border-amber-200/70 bg-amber-50/60 p-8 text-center">
+          <section className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 rounded-3xl border border-blue-200/70 bg-blue-50/60 p-8 text-center">
             <h1 className="text-3xl font-semibold text-neutral-900">Welcome to Mentra</h1>
             <p className="text-sm text-neutral-600">Sign in with one of the demo accounts to browse the menu or manage content.</p>
             <Link
               href="/login"
-              className="rounded-full bg-amber-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
+              className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
               Go to login
             </Link>
@@ -1292,7 +1292,7 @@ export default function Home() {
                   <h2 className="text-3xl font-bold text-neutral-900">Training Library</h2>
                   {orderingSaving ? <p className="mt-1 text-xs text-neutral-500">Syncing order…</p> : null}
                 </div>
-                {statusMessage ? <p className="text-sm text-amber-600">{statusMessage}</p> : null}
+                {statusMessage ? <p className="text-sm text-blue-600">{statusMessage}</p> : null}
               </div>
 
               {menuError ? <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{menuError}</p> : null}
@@ -1302,7 +1302,7 @@ export default function Home() {
               ) : null}
 
               {!menuLoading && groupedCategories.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 p-6 text-center text-sm text-amber-700">
+                <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50/60 p-6 text-center text-sm text-blue-700">
                   No menu items yet. {isAdmin ? "Use the + button to add the first training card." : "Please contact your administrator for access."}
                 </div>
               ) : null}

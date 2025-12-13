@@ -35,8 +35,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-amber-50 via-white to-white px-4 py-12">
-      <div className="w-full max-w-md rounded-3xl border border-amber-100 bg-white p-8 shadow-xl">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-blue-50 via-white to-white px-4 py-12">
+      <div className="w-full max-w-md rounded-3xl border border-blue-100 bg-white p-8 shadow-xl">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <Image src="/mentra-wordmark.png" alt="Mentra" width={200} height={60} priority className="h-auto w-48" />
           <h1 className="text-3xl font-semibold text-neutral-900">Sign in to Mentra</h1>
@@ -50,7 +50,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={event => setEmail(event.target.value)}
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+              className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               placeholder="admin@mentra.dev"
               required
             />
@@ -62,7 +62,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={event => setPassword(event.target.value)}
-              className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+              className="rounded-lg border border-neutral-200 px-3 py-2 text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
               placeholder="••••••••"
               required
             />
@@ -73,13 +73,13 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting || loading}
-            className="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSubmitting ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
-        <div className="mt-8 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+        <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
           <h2 className="text-sm font-semibold text-neutral-700">Demo accounts</h2>
           <ul className="mt-3 space-y-3 text-sm text-neutral-600">
             {testAccounts.map(account => (
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => applyTestAccount(account.email, account.password)}
-                  className="rounded-full border border-amber-300 px-3 py-1 text-xs font-medium text-amber-600 transition hover:bg-amber-100"
+                  className="rounded-full border border-blue-300 px-3 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-100"
                 >
                   Autofill
                 </button>
@@ -102,7 +102,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-6 text-center text-sm text-neutral-500">
-          <Link href="/" className="text-amber-600 hover:underline">
+          <Link href="/" className="text-blue-600 hover:underline">
             ← Back to manual
           </Link>
         </div>
