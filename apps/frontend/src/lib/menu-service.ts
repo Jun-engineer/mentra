@@ -200,6 +200,13 @@ export const fetchTrainingPlaylist = async (config: FetchConfig = {}): Promise<T
     signal: config.signal
   });
 
+  if (response.status === 404) {
+    return {
+      itemIds: [],
+      items: []
+    };
+  }
+
   if (!response.ok) {
     throw new Error(`Failed to load training playlist (${response.status})`);
   }

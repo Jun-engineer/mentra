@@ -63,30 +63,6 @@ type TemplateCategoryDefinition = {
 
 const TEMPLATE_MENU: TemplateCategoryDefinition[] = [
   {
-    id: "training",
-    label: "Training",
-    subcategories: [
-      {
-        id: "general",
-        label: "General",
-        items: [
-          {
-            id: "template-training-orientation",
-            title: "New Hire Orientation",
-            description:
-              "Welcome teammates with a quick overview of safety basics, service expectations, and culture pillars before they start shadowing.",
-            steps: [
-              "Greet the manager-on-duty and pick up your badge.",
-              "Review the guest experience guidelines with your mentor.",
-              "Walk through the safety checklist and evacuation map.",
-              "Shadow a senior team member for the first two guest interactions."
-            ]
-          }
-        ]
-      }
-    ]
-  },
-  {
     id: "food",
     label: "Food",
     subcategories: [
