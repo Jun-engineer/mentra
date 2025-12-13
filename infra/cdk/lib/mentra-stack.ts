@@ -165,7 +165,13 @@ export class MentraStack extends Stack {
       apiName,
       corsPreflight: {
         allowHeaders: ["*"],
-        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.DELETE, CorsHttpMethod.OPTIONS],
+        allowMethods: [
+          CorsHttpMethod.GET,
+          CorsHttpMethod.POST,
+          CorsHttpMethod.DELETE,
+          CorsHttpMethod.PUT,
+          CorsHttpMethod.OPTIONS
+        ],
         allowOrigins: ["*"]
       }
     });
@@ -185,6 +191,12 @@ export class MentraStack extends Stack {
     api.addRoutes({
       path: "/menu/{tenantId}/{itemId}",
       methods: [HttpMethod.GET, HttpMethod.DELETE],
+      integration: apiIntegration
+    });
+
+    api.addRoutes({
+      path: "/menu/{tenantId}/ordering",
+      methods: [HttpMethod.GET, HttpMethod.PUT],
       integration: apiIntegration
     });
 

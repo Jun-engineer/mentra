@@ -30,6 +30,16 @@ const jsonHeaders = {
   "Content-Type": "application/json"
 };
 
+const slugify = (value: string): string => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/gu, "")
+    .replace(/\s+/gu, "-")
+    .replace(/-+/gu, "-")
+    .replace(/^-|-$/gu, "");
+};
+
 const upsertSchema = z
   .object({
     itemId: z.string().optional(),
@@ -62,6 +72,35 @@ type MenuRecord = {
   updatedAt?: string;
 };
 
+type MenuConfigRecord = {
+  PK: string;
+  SK: string;
+  categoryOrder: string[];
+  subcategoryOrder: Record<string, string[]>;
+  itemOrder: Record<string, string[]>;
+  updatedAt?: string;
+};
+
+type MenuOrdering = {
+  categoryOrder: string[];
+  subcategoryOrder: Record<string, string[]>;
+  itemOrder: Record<string, string[]>;
+};
+
+const MENU_CONFIG_SK = "CONFIG#ORDERING";
+
+const emptyOrdering: MenuOrdering = {
+  categoryOrder: [],
+  subcategoryOrder: {},
+  itemOrder: {}
+};
+
+const orderingSchema = z.object({
+  categoryOrder: z.array(z.string()),
+  subcategoryOrder: z.record(z.array(z.string())),
+  itemOrder: z.record(z.array(z.string()))
+});
+
 const toMenuResponse = (record: MenuRecord) => ({
   id: record.SK.replace(/^ITEM#/u, ""),
   title: record.title,
@@ -73,6 +112,188 @@ const toMenuResponse = (record: MenuRecord) => ({
   updatedAt: record.updatedAt ?? null,
   createdAt: record.createdAt ?? null
 });
+
+const orderingKeyFor = (categorySlug: string, subcategorySlug: string) => `${categorySlug}::${subcategorySlug}`;
+
+const getMenuOrdering = async (tenantId: string): Promise<MenuOrdering> => {
+  const response = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `TENANT#${tenantId}#MENU`,
+        SK: MENU_CONFIG_SK
+      }
+    })
+  );
+
+  if (!response.Item) {
+    return { ...emptyOrdering };
+  }
+
+  const record = response.Item as MenuConfigRecord;
+  return {
+    categoryOrder: Array.isArray(record.categoryOrder) ? [...record.categoryOrder] : [],
+    subcategoryOrder: typeof record.subcategoryOrder === "object" && record.subcategoryOrder
+      ? { ...record.subcategoryOrder }
+      : {},
+    itemOrder: typeof record.itemOrder === "object" && record.itemOrder ? { ...record.itemOrder } : {}
+  };
+};
+
+const saveMenuOrdering = async (tenantId: string, ordering: MenuOrdering) => {
+  const now = new Date().toISOString();
+  const record: MenuConfigRecord = {
+    PK: `TENANT#${tenantId}#MENU`,
+    SK: MENU_CONFIG_SK,
+    categoryOrder: [...ordering.categoryOrder],
+    subcategoryOrder: { ...ordering.subcategoryOrder },
+    itemOrder: { ...ordering.itemOrder },
+    updatedAt: now
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: record
+    })
+  );
+};
+
+const normaliseOrderingWithItems = (menuItems: ReturnType<typeof toMenuResponse>[], ordering: MenuOrdering): MenuOrdering => {
+  const categorySlugs = new Set<string>();
+  const subcategorySlugMap = new Map<string, Set<string>>();
+  const itemSlugMap = new Map<string, string[]>();
+
+  for (const item of menuItems) {
+    const categorySlug = slugify(item.category || "uncategorized") || "uncategorized";
+    const subcategorySlug = slugify(item.subcategory || item.category || "general") || "general";
+
+    categorySlugs.add(categorySlug);
+
+    if (!subcategorySlugMap.has(categorySlug)) {
+      subcategorySlugMap.set(categorySlug, new Set<string>());
+    }
+    subcategorySlugMap.get(categorySlug)!.add(subcategorySlug);
+
+    const key = orderingKeyFor(categorySlug, subcategorySlug);
+    if (!itemSlugMap.has(key)) {
+      itemSlugMap.set(key, []);
+    }
+    itemSlugMap.get(key)!.push(item.id);
+  }
+
+  const cleaned: MenuOrdering = {
+    categoryOrder: [],
+    subcategoryOrder: {},
+    itemOrder: {}
+  };
+
+  const seenCategories = new Set<string>();
+  for (const slug of ordering.categoryOrder) {
+    if (categorySlugs.has(slug) && !seenCategories.has(slug)) {
+      cleaned.categoryOrder.push(slug);
+      seenCategories.add(slug);
+    }
+  }
+
+  const remainingCategories = [...categorySlugs].filter(slug => !seenCategories.has(slug)).sort();
+  cleaned.categoryOrder.push(...remainingCategories);
+
+  for (const categorySlug of cleaned.categoryOrder) {
+    const availableSubcategories = subcategorySlugMap.get(categorySlug) ?? new Set<string>();
+    const seenSubcategories = new Set<string>();
+    const existingOrder = ordering.subcategoryOrder[categorySlug] ?? [];
+
+    cleaned.subcategoryOrder[categorySlug] = [];
+
+    for (const slug of existingOrder) {
+      if (availableSubcategories.has(slug) && !seenSubcategories.has(slug)) {
+        cleaned.subcategoryOrder[categorySlug].push(slug);
+        seenSubcategories.add(slug);
+      }
+    }
+
+    const remainingSubcategories = [...availableSubcategories]
+      .filter(slug => !seenSubcategories.has(slug))
+      .sort();
+    cleaned.subcategoryOrder[categorySlug].push(...remainingSubcategories);
+
+    for (const subSlug of cleaned.subcategoryOrder[categorySlug]) {
+      const key = orderingKeyFor(categorySlug, subSlug);
+      const availableItems = itemSlugMap.get(key) ?? [];
+      const seenItems = new Set<string>();
+      const existingItems = ordering.itemOrder[key] ?? [];
+
+      cleaned.itemOrder[key] = [];
+
+      for (const itemId of existingItems) {
+        if (availableItems.includes(itemId) && !seenItems.has(itemId)) {
+          cleaned.itemOrder[key].push(itemId);
+          seenItems.add(itemId);
+        }
+      }
+
+      const remainingItems = availableItems
+        .filter(itemId => !seenItems.has(itemId))
+        .sort();
+      cleaned.itemOrder[key].push(...remainingItems);
+    }
+  }
+
+  return cleaned;
+};
+
+const ensureItemInOrdering = async (tenantId: string, record: MenuRecord) => {
+  const ordering = await getMenuOrdering(tenantId);
+
+  const itemId = record.SK.replace(/^ITEM#/u, "");
+  const categorySlug = slugify(record.category || "uncategorized") || "uncategorized";
+  const subcategorySlug = slugify(record.subcategory || record.category || "general") || "general";
+  const key = orderingKeyFor(categorySlug, subcategorySlug);
+
+  let changed = false;
+
+  if (!ordering.categoryOrder.includes(categorySlug)) {
+    ordering.categoryOrder.push(categorySlug);
+    changed = true;
+  }
+
+  const subcategoryOrder = ordering.subcategoryOrder[categorySlug] ?? [];
+  if (!subcategoryOrder.includes(subcategorySlug)) {
+    ordering.subcategoryOrder[categorySlug] = [...subcategoryOrder, subcategorySlug];
+    changed = true;
+  }
+
+  const itemOrder = ordering.itemOrder[key] ?? [];
+  if (!itemOrder.includes(itemId)) {
+    ordering.itemOrder[key] = [...itemOrder, itemId];
+    changed = true;
+  }
+
+  if (changed) {
+    await saveMenuOrdering(tenantId, ordering);
+  }
+};
+
+const removeItemFromOrdering = async (tenantId: string, itemId: string, category: string, subcategory?: string) => {
+  const ordering = await getMenuOrdering(tenantId);
+  const categorySlug = slugify(category || "uncategorized") || "uncategorized";
+  const subcategorySlug = slugify(subcategory || category || "general") || "general";
+  const key = orderingKeyFor(categorySlug, subcategorySlug);
+
+  const existingItems = ordering.itemOrder[key];
+  if (!existingItems) {
+    return;
+  }
+
+  const filteredItems = existingItems.filter(id => id !== itemId);
+  if (filteredItems.length === existingItems.length) {
+    return;
+  }
+
+  ordering.itemOrder[key] = filteredItems;
+  await saveMenuOrdering(tenantId, ordering);
+};
 
 const ok = (statusCode: number, payload: unknown): APIGatewayProxyResultV2 => ({
   statusCode,
@@ -102,7 +323,7 @@ const ensureItemId = (params: APIGatewayProxyEventV2["pathParameters"]): string 
   return itemId;
 };
 
-const listMenuItems = async (tenantId: string) => {
+const listMenuState = async (tenantId: string) => {
   const response = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -114,7 +335,15 @@ const listMenuItems = async (tenantId: string) => {
     })
   );
 
-  return (response.Items ?? []).map(item => toMenuResponse(item as MenuRecord));
+  const items = (response.Items ?? []).map(item => toMenuResponse(item as MenuRecord));
+  const ordering = await getMenuOrdering(tenantId);
+  const normalisedOrdering = normaliseOrderingWithItems(items, ordering);
+
+  if (JSON.stringify(ordering) !== JSON.stringify(normalisedOrdering)) {
+    await saveMenuOrdering(tenantId, normalisedOrdering);
+  }
+
+  return { items, ordering: normalisedOrdering };
 };
 
 const getMenuItem = async (tenantId: string, itemId: string) => {
@@ -167,19 +396,35 @@ const upsertMenuItem = async (tenantId: string, payload: z.infer<typeof upsertSc
     })
   );
 
+  await ensureItemInOrdering(tenantId, record);
+
   return toMenuResponse(record);
 };
 
 const deleteMenuItem = async (tenantId: string, itemId: string) => {
+  const key = {
+    PK: `TENANT#${tenantId}#MENU`,
+    SK: `ITEM#${itemId}`
+  };
+
+  const existing = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: key
+    })
+  );
+
   await docClient.send(
     new DeleteCommand({
       TableName: TABLE_NAME,
-      Key: {
-        PK: `TENANT#${tenantId}#MENU`,
-        SK: `ITEM#${itemId}`
-      }
+      Key: key
     })
   );
+
+  const record = existing.Item as MenuRecord | undefined;
+  if (record) {
+    await removeItemFromOrdering(tenantId, itemId, record.category, record.subcategory);
+  }
 };
 
 const isHttpError = (error: unknown): error is HttpError => {
@@ -201,8 +446,27 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
         return ok(200, { status: "ok" });
       case "GET /menu/{tenantId}": {
         const tenantId = ensureTenantId(event.pathParameters);
-        const items = await listMenuItems(tenantId);
-        return ok(200, { items });
+        const state = await listMenuState(tenantId);
+        return ok(200, state);
+      }
+      case "GET /menu/{tenantId}/ordering": {
+        const tenantId = ensureTenantId(event.pathParameters);
+        const ordering = await getMenuOrdering(tenantId);
+        return ok(200, { ordering });
+      }
+      case "PUT /menu/{tenantId}/ordering": {
+        const tenantId = ensureTenantId(event.pathParameters);
+        let json: unknown = {};
+        if (event.body) {
+          try {
+            json = JSON.parse(event.body);
+          } catch {
+            throw new createError.BadRequest("Request body must be valid JSON");
+          }
+        }
+        const parsed = orderingSchema.parse(json);
+        await saveMenuOrdering(tenantId, parsed);
+        return ok(204, {});
       }
       case "GET /menu/{tenantId}/{itemId}": {
         const tenantId = ensureTenantId(event.pathParameters);

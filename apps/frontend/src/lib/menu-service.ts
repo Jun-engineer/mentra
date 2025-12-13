@@ -1,5 +1,5 @@
 import { appConfig } from "@/lib/config";
-import type { MenuItem } from "@/data/menu";
+import type { MenuItem, MenuOrdering } from "@/data/menu";
 
 export type UpsertMenuInput = {
   itemId?: string;
@@ -9,6 +9,11 @@ export type UpsertMenuInput = {
   description?: string;
   videoUrl?: string;
   steps?: string[];
+};
+
+export type MenuState = {
+  items: MenuItem[];
+  ordering: MenuOrdering;
 };
 
 type ApiMenuItem = {
@@ -25,6 +30,12 @@ type ApiMenuItem = {
 
 type FetchConfig = {
   cache?: RequestInit["cache"];
+};
+
+const defaultOrdering: MenuOrdering = {
+  categoryOrder: [],
+  subcategoryOrder: {},
+  itemOrder: {}
 };
 
 const asStringOrNull = (value: unknown): string | null => {
@@ -88,7 +99,43 @@ const normalizeItem = (item: ApiMenuItem): MenuItem => {
   };
 };
 
-export const fetchMenuItems = async (config: FetchConfig = {}): Promise<MenuItem[]> => {
+const normalizeOrdering = (value: unknown): MenuOrdering => {
+  if (!value || typeof value !== "object") {
+    return { ...defaultOrdering };
+  }
+
+  const categoryOrder = Array.isArray((value as { categoryOrder?: unknown }).categoryOrder)
+    ? ((value as { categoryOrder: unknown[] }).categoryOrder.filter(entry => typeof entry === "string") as string[])
+    : [];
+
+  const rawSubcategories = (value as { subcategoryOrder?: unknown }).subcategoryOrder;
+  const subcategoryOrder: Record<string, string[]> = {};
+  if (rawSubcategories && typeof rawSubcategories === "object") {
+    for (const [key, entries] of Object.entries(rawSubcategories as Record<string, unknown>)) {
+      if (Array.isArray(entries)) {
+        subcategoryOrder[key] = entries.filter(entry => typeof entry === "string") as string[];
+      }
+    }
+  }
+
+  const rawItemOrder = (value as { itemOrder?: unknown }).itemOrder;
+  const itemOrder: Record<string, string[]> = {};
+  if (rawItemOrder && typeof rawItemOrder === "object") {
+    for (const [key, entries] of Object.entries(rawItemOrder as Record<string, unknown>)) {
+      if (Array.isArray(entries)) {
+        itemOrder[key] = entries.filter(entry => typeof entry === "string") as string[];
+      }
+    }
+  }
+
+  return {
+    categoryOrder,
+    subcategoryOrder,
+    itemOrder
+  };
+};
+
+export const fetchMenuState = async (config: FetchConfig = {}): Promise<MenuState> => {
   const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}`), {
     cache: config.cache ?? "no-store"
   });
@@ -97,9 +144,14 @@ export const fetchMenuItems = async (config: FetchConfig = {}): Promise<MenuItem
     throw new Error(`Failed to load menu items (${response.status})`);
   }
 
-  const data = (await response.json()) as { items?: unknown };
+  const data = (await response.json()) as { items?: unknown; ordering?: unknown };
   const items = Array.isArray(data.items) ? data.items : [];
-  return items.map(entry => normalizeItem(entry));
+  const ordering = normalizeOrdering(data.ordering);
+
+  return {
+    items: items.map(entry => normalizeItem(entry)),
+    ordering
+  };
 };
 
 export const fetchMenuItem = async (itemId: string, config: FetchConfig = {}): Promise<MenuItem | null> => {
@@ -153,5 +205,20 @@ export const deleteMenuItem = async (itemId: string): Promise<void> => {
   if (!response.ok) {
     const message = await response.text();
     throw new Error(message || `Failed to delete menu item (status ${response.status})`);
+  }
+};
+
+export const updateMenuOrdering = async (ordering: MenuOrdering): Promise<void> => {
+  const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}/ordering`), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(ordering)
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `Failed to update menu ordering (status ${response.status})`);
   }
 };
