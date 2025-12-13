@@ -66,11 +66,22 @@ const asTrimmedStringOrEmpty = (value: unknown): string => {
   return value.trim();
 };
 
-const buildUrl = (path: string) => {
-  if (!appConfig.apiBaseUrl) {
-    throw new Error("Mentra API base URL is not configured.");
+const resolveApiBaseUrl = (): string => {
+  if (appConfig.apiBaseUrl) {
+    return appConfig.apiBaseUrl;
   }
-  return `${appConfig.apiBaseUrl}${path}`;
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, "");
+  }
+
+  throw new Error("Mentra API base URL is not configured.");
+};
+
+const buildUrl = (path: string) => {
+  const base = resolveApiBaseUrl();
+  const normalisedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${normalisedPath}`;
 };
 
 const normalizeItem = (item: ApiMenuItem): MenuItem => {

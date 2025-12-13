@@ -3,7 +3,6 @@
 import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { appConfig } from "@/lib/config";
 import type { MenuItem } from "@/data/menu";
 import { slugify } from "@/data/menu";
 import { fetchMenuItem } from "@/lib/menu-service";
@@ -25,7 +24,7 @@ export default function ItemPageClient({ itemId }: { itemId: string }) {
   const [state, setState] = useState<FetchState>("idle");
 
   useEffect(() => {
-    if (!hasValidId || !appConfig.apiBaseUrl) {
+    if (!hasValidId) {
       return;
     }
 
@@ -74,11 +73,7 @@ export default function ItemPageClient({ itemId }: { itemId: string }) {
     };
   }, [hasValidId, resolvedItemId]);
 
-  const effectiveState: FetchState = !hasValidId
-    ? "not-found"
-    : !appConfig.apiBaseUrl
-      ? "error"
-      : state;
+  const effectiveState: FetchState = !hasValidId ? "not-found" : state;
   const currentItem = hasValidId ? item : null;
   const categorySlug = currentItem?.category ? slugify(currentItem.category) : "";
 

@@ -401,11 +401,22 @@ const SubcategoryPanel = ({ categoryId, subcategory, isOpen, onToggle, isAdmin, 
 
   return (
     <section ref={setNodeRef} style={style} className="pl-2">
-      <div className="group flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2">
+        {isAdmin ? (
+          <button
+            type="button"
+            aria-label={`Reorder ${subcategory.label}`}
+            className="mt-1 flex h-8 w-8 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripIcon className="h-3 w-3" />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onToggle}
-          className="flex flex-1 items-center justify-between gap-2 border-b border-neutral-200 pb-2 text-left"
+          className="group flex flex-1 items-center justify-between gap-2 border-b border-neutral-200 pb-2 text-left"
           aria-expanded={isOpen}
           aria-controls={`${categoryId}-${subcategory.id}-panel`}
         >
@@ -414,17 +425,6 @@ const SubcategoryPanel = ({ categoryId, subcategory, isOpen, onToggle, isAdmin, 
             {isOpen ? "−" : "+"}
           </span>
         </button>
-        {isAdmin ? (
-          <button
-            type="button"
-            aria-label={`Reorder ${subcategory.label}`}
-            className="mt-[2px] hidden rounded-full border border-neutral-200 bg-white p-1.5 text-sm text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none group-hover:inline-flex focus:inline-flex"
-            {...attributes}
-            {...listeners}
-          >
-            ::
-          </button>
-        ) : null}
       </div>
       {isOpen ? children : null}
     </section>
@@ -488,8 +488,19 @@ const MenuItemRow = ({ item, categoryId, subcategoryId, isAdmin, onEdit, onDelet
     <li
       ref={setNodeRef}
       style={style}
-      className="group flex items-center justify-between gap-3 rounded-lg border border-transparent px-2 py-2"
+      className="group flex items-center gap-3 rounded-lg border border-transparent px-2 py-2"
     >
+      {isAdmin ? (
+        <button
+          type="button"
+          aria-label={`Reorder ${item.title}`}
+          className="flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripIcon className="h-3 w-3" />
+        </button>
+      ) : null}
       <Link
         href={{
           pathname: "/items/[itemId]",
@@ -505,15 +516,6 @@ const MenuItemRow = ({ item, categoryId, subcategoryId, isAdmin, onEdit, onDelet
       </Link>
       {isAdmin ? (
         <div className="flex items-center gap-2 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-          <button
-            type="button"
-            aria-label={`Move ${item.title}`}
-            className="hidden h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none group-hover:flex focus:flex"
-            {...attributes}
-            {...listeners}
-          >
-            ::
-          </button>
           <button
             type="button"
             onClick={onEdit}
