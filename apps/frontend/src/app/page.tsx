@@ -39,6 +39,12 @@ type TemplateOption = {
   label: string;
   category: string;
   subcategory?: string;
+  sample: {
+    title: string;
+    description: string;
+    videoUrl?: string;
+    steps?: string[];
+  };
 };
 
 type TemplateGroup = {
@@ -54,7 +60,23 @@ const ITEM_TEMPLATE_GROUPS: TemplateGroup[] = [
     title: "Training",
     description: "Single category for operational training content.",
     templates: [
-      { id: "training", label: "Training", category: "Training" }
+      {
+        id: "training-intro",
+        label: "Orientation Overview",
+        category: "Training",
+        subcategory: "General",
+        sample: {
+          title: "New Hire Orientation",
+          description:
+            "Welcome teammates with a quick overview of safety basics, service expectations, and culture pillars before they start shadowing.",
+          steps: [
+            "Greet the manager-on-duty and pick up your badge.",
+            "Review the guest experience guidelines with your mentor.",
+            "Walk through the safety checklist and evacuation map.",
+            "Shadow a senior team member for the first two guest interactions."
+          ]
+        }
+      }
     ]
   },
   {
@@ -62,10 +84,74 @@ const ITEM_TEMPLATE_GROUPS: TemplateGroup[] = [
     title: "Food",
     description: "Organize food playbooks by course type.",
     templates: [
-      { id: "food-snacks", label: "Snacks", category: "Food", subcategory: "Snacks" },
-      { id: "food-sides", label: "Sides", category: "Food", subcategory: "Sides" },
-      { id: "food-main", label: "Main", category: "Food", subcategory: "Main" },
-      { id: "food-desert", label: "Desert", category: "Food", subcategory: "Desert" }
+      {
+        id: "food-snacks",
+        label: "House Chips & Dip",
+        category: "Food",
+        subcategory: "Snacks",
+        sample: {
+          title: "House Chips & Salsa",
+          description:
+            "Crisp kettle chips tossed in seasoning salt with a bright salsa roja. Prep in under 5 minutes during the mid-shift reset.",
+          steps: [
+            "Heat chips in the oven for 45 seconds to refresh crunch.",
+            "Toss in finishing salt and plate in the shallow bowl.",
+            "Ladle 3 oz salsa roja into ramekin; garnish with chopped cilantro.",
+            "Serve with shareable napkins and remind guests of spice level."
+          ]
+        }
+      },
+      {
+        id: "food-sides",
+        label: "Seasonal Side",
+        category: "Food",
+        subcategory: "Sides",
+        sample: {
+          title: "Roasted Garlic Broccolini",
+          description:
+            "Quick-fire broccolini tossed with confit garlic oil and lemon zest. Ideal for pairing with mains on busy nights.",
+          steps: [
+            "Blanch broccolini for 60 seconds and shock in ice water.",
+            "In sauté pan, sear with garlic oil until lightly charred.",
+            "Finish with lemon zest, chili flakes, and Maldon salt.",
+            "Plate in share bowl and drizzle remaining oil over top."
+          ]
+        }
+      },
+      {
+        id: "food-mains",
+        label: "Signature Main",
+        category: "Food",
+        subcategory: "Mains",
+        sample: {
+          title: "Mentra Smash Burger",
+          description:
+            "Double smashed beef patties with caramelized onions, cheddar, and house sauce. Ideal for service training reps.",
+          steps: [
+            "Press two 3 oz patties on the flat top and season immediately.",
+            "Flip after 60 seconds, top with cheddar, and steam to melt.",
+            "Toast brioche bun, spread house sauce on both sides.",
+            "Stack patties, add caramelized onions and butter lettuce, then spike."
+          ]
+        }
+      },
+      {
+        id: "food-dessert",
+        label: "Dessert",
+        category: "Food",
+        subcategory: "Desserts",
+        sample: {
+          title: "Salted Caramel Pudding",
+          description:
+            "Creamy butterscotch pudding portioned for service line with a quick brûléed sugar cap.",
+          steps: [
+            "Portion 5 oz of chilled pudding into coupe glass.",
+            "Top with whipped cream rosette and drizzle caramel.",
+            "Torch turbinado sugar until amber and let set.",
+            "Finish with flaky sea salt and serve with dessert spoon."
+          ]
+        }
+      }
     ]
   },
   {
@@ -73,12 +159,106 @@ const ITEM_TEMPLATE_GROUPS: TemplateGroup[] = [
     title: "Drink",
     description: "Quickly spin up beverage cards by style.",
     templates: [
-      { id: "drink-soft", label: "Soft Drink", category: "Drink", subcategory: "Soft Drink" },
-      { id: "drink-beer", label: "Beer", category: "Drink", subcategory: "Beer" },
-      { id: "drink-whiskey", label: "Whiskey", category: "Drink", subcategory: "Whiskey" },
-      { id: "drink-red", label: "Red Wine", category: "Drink", subcategory: "Red Wine" },
-      { id: "drink-white", label: "White Wine", category: "Drink", subcategory: "White Wine" },
-      { id: "drink-sake", label: "Sake", category: "Drink", subcategory: "Sake" }
+      {
+        id: "drink-soft",
+        label: "Signature Soda",
+        category: "Drink",
+        subcategory: "Soft Drinks",
+        sample: {
+          title: "Ginger Citrus Fizz",
+          description:
+            "House-made ginger syrup topped with yuzu soda and candied ginger garnish. Great for zero-proof pairing.",
+          steps: [
+            "Fill Collins glass with pebble ice.",
+            "Add 1.5 oz ginger syrup and 0.5 oz lime juice.",
+            "Top with yuzu soda, stir gently, and garnish with candied ginger skewer."
+          ]
+        }
+      },
+      {
+        id: "drink-beer",
+        label: "Draft Highlight",
+        category: "Drink",
+        subcategory: "Beer",
+        sample: {
+          title: "Mentra Pale Ale",
+          description:
+            "Citrus-forward pale ale from our local partner brewery. Emphasize cold glassware and head retention.",
+          steps: [
+            "Rinse 16 oz glass with cold water and hold at 45° under tap.",
+            "Pour steadily, straightening glass at halfway point.",
+            "Cap pour with 1 inch foam head, wipe glass, and serve on coaster."
+          ]
+        }
+      },
+      {
+        id: "drink-whiskey",
+        label: "Whiskey Feature",
+        category: "Drink",
+        subcategory: "Whiskey",
+        sample: {
+          title: "Smoked Old Fashioned",
+          description:
+            "Classic build finished with maple smoke. Perfect for showcasing bar flair in training videos.",
+          steps: [
+            "Stir 2 oz rye, 0.25 oz demerara, and 2 dashes bitters over ice.",
+            "Strain over large cube in rocks glass.",
+            "Torch charred maple plank and capture smoke beneath cloche.",
+            "Express orange peel, rim glass, and present with cloche reveal."
+          ]
+        }
+      },
+      {
+        id: "drink-red",
+        label: "Red Wine",
+        category: "Drink",
+        subcategory: "Red Wine",
+        sample: {
+          title: "Pinot Noir Service",
+          description:
+            "Bottle service guide for the house pinot noir including temperature, glassware, and talking points.",
+          steps: [
+            "Confirm bottle vintage and guest preference for tasting.",
+            "Present label to guest, open with waiter’s friend, and offer cork.",
+            "Pour 2 oz taste, receive approval, then serve clockwise with 5 oz pours.",
+            "Rest bottle on coaster with label facing guests."
+          ]
+        }
+      },
+      {
+        id: "drink-white",
+        label: "White Wine",
+        category: "Drink",
+        subcategory: "White Wine",
+        sample: {
+          title: "Sauvignon Blanc Service",
+          description:
+            "Highlight the bright, herbal notes of our sauvignon blanc while reinforcing chill-hold procedures.",
+          steps: [
+            "Retrieve bottle from cold well and towel dry.",
+            "Present, uncork, and offer sample to host.",
+            "Serve 5 oz pours into chilled stems, finishing any remaining wine evenly.",
+            "Store bottle in silver chiller with fresh ice if not finished."
+          ]
+        }
+      },
+      {
+        id: "drink-sake",
+        label: "Sake Service",
+        category: "Drink",
+        subcategory: "Sake",
+        sample: {
+          title: "Junmai Ginjo Pour",
+          description:
+            "Step-by-step for presenting our feature sake flight, including pronunciation cues for staff training.",
+          steps: [
+            "Warm carafe in 120°F water bath for 60 seconds.",
+            "Announce brewery story and tasting notes before pouring.",
+            "Pour 2 oz into ochoko for each guest, rotating clockwise.",
+            "Offer chilled water palate cleanser and thank guests."
+          ]
+        }
+      }
     ]
   }
 ];
@@ -172,12 +352,14 @@ const TemplateSelectionModal = ({
   groups,
   onSelect,
   onBack,
-  onClose
+  onClose,
+  busyTemplateId
 }: {
   groups: TemplateGroup[];
   onSelect: (template: TemplateOption) => void;
   onBack: () => void;
   onClose: () => void;
+  busyTemplateId: string | null;
 }) => (
   <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4 py-8">
     <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl sm:p-8 max-h-[85vh] overflow-y-auto">
@@ -209,9 +391,12 @@ const TemplateSelectionModal = ({
                   key={template.id}
                   type="button"
                   onClick={() => onSelect(template)}
-                  className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-700 transition hover:border-amber-300 hover:bg-amber-100"
+                  disabled={busyTemplateId !== null && busyTemplateId !== template.id}
+                  className={`rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-medium text-amber-700 transition hover:border-amber-300 hover:bg-amber-100 ${
+                    busyTemplateId !== null && busyTemplateId !== template.id ? "opacity-60" : ""
+                  } ${busyTemplateId === template.id ? "cursor-wait" : ""}`}
                 >
-                  {template.label}
+                  {busyTemplateId === template.id ? "Creating…" : template.label}
                   <span className="mt-1 block text-xs font-normal text-amber-600">
                     {template.subcategory ? `${template.category} • ${template.subcategory}` : template.category}
                   </span>
@@ -224,15 +409,17 @@ const TemplateSelectionModal = ({
       <div className="mt-6 flex justify-between">
         <button
           type="button"
-          onClick={onBack}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-600 transition hover:bg-neutral-100"
+          onClick={busyTemplateId ? undefined : onBack}
+          disabled={Boolean(busyTemplateId)}
+          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-600 transition hover:bg-neutral-100 disabled:opacity-60"
         >
           Back
         </button>
         <button
           type="button"
-          onClick={onClose}
-          className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-white transition hover:bg-neutral-900"
+          onClick={busyTemplateId ? undefined : onClose}
+          disabled={Boolean(busyTemplateId)}
+          className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-white transition hover:bg-neutral-900 disabled:opacity-60"
         >
           Done
         </button>
@@ -404,6 +591,7 @@ export default function Home() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [templateBusyId, setTemplateBusyId] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
 
@@ -472,16 +660,33 @@ export default function Home() {
   };
 
   const handleTemplateSelect = (template: TemplateOption) => {
-    setModalState({
-      open: true,
-      mode: "create",
-      initialValues: {
-        category: template.category,
-        subcategory: template.subcategory ?? "",
-        title: template.label
+    if (templateBusyId) {
+      return;
+    }
+
+    setTemplateBusyId(template.id);
+    void (async () => {
+      try {
+        const createdItem = await upsertMenuItem({
+          title: template.sample.title,
+          category: template.category,
+          subcategory: template.subcategory,
+          description: template.sample.description,
+          videoUrl: template.sample.videoUrl,
+          steps: template.sample.steps
+        });
+
+        setStatusMessage(`Created “${createdItem.title}” from template`);
+        setCreateFlowStep("idle");
+        await loadMenu();
+        setModalState({ open: true, mode: "edit", item: createdItem, initialValues: undefined });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to create menu item";
+        setStatusMessage(message);
+      } finally {
+        setTemplateBusyId(null);
       }
-    });
-    setCreateFlowStep("idle");
+    })();
   };
 
   const handleTemplateFlowClose = () => {
@@ -704,6 +909,7 @@ export default function Home() {
           onSelect={handleTemplateSelect}
           onBack={handleTemplateBack}
           onClose={handleTemplateFlowClose}
+          busyTemplateId={templateBusyId}
         />
       ) : null}
 

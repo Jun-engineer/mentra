@@ -1,4 +1,4 @@
-const CACHE_NAME = "mentra-cache-v1";
+const CACHE_NAME = "mentra-cache-v2";
 const PRECACHE_URLS = ["/"];
 
 self.addEventListener("install", event => {
@@ -22,6 +22,13 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  const requestUrl = new URL(request.url);
+
+  // Bypass caching for cross-origin requests (e.g., Mentra API) to avoid stale data
+  if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
   event.respondWith(
     caches.match(request).then(cachedResponse => {
       if (cachedResponse) {
@@ -29,8 +36,12 @@ self.addEventListener("fetch", event => {
       }
 
       return fetch(request).then(response => {
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, responseClone));
+        if (response && response.status === 200 && response.type === "basic") {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, responseClone)).catch(() => {
+            // ignore cache write errors
+          });
+        }
         return response;
       });
     })

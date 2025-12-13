@@ -150,8 +150,8 @@ export const deleteMenuItem = async (itemId: string): Promise<void> => {
     method: "DELETE"
   });
 
-  if (!response.ok && response.status !== 404) {
+  if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || "Failed to delete menu item");
+    throw new Error(message || `Failed to delete menu item (status ${response.status})`);
   }
 };
