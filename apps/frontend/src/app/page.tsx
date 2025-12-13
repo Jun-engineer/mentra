@@ -1375,21 +1375,9 @@ export default function Home() {
               {menuError ? <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{menuError}</p> : null}
 
               <div className="rounded-3xl border border-blue-200 bg-blue-50/60 p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <Link href="/training" className="text-xl font-semibold text-neutral-900 transition hover:text-blue-600">
-                      Training Menu
-                    </Link>
-                    <p className="text-sm text-neutral-600">Open the dedicated training menu to reorder items, mark progress, and manage the list.</p>
-                  </div>
-                  <Link
-                    href="/training"
-                    className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    View training menu
-                    <span aria-hidden="true">→</span>
-                  </Link>
-                </div>
+                <Link href="/training" className="inline-flex items-center gap-2 text-xl font-semibold text-neutral-900 transition hover:text-blue-600">
+                  Training Menu
+                </Link>
                 <div className="mt-4 space-y-3">
                   {trainingError ? (
                     <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{trainingError}</p>
