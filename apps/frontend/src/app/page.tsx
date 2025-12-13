@@ -1113,7 +1113,6 @@ export default function Home() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load training playlist";
       setTrainingError(message);
-      setTrainingPlaylist([]);
     } finally {
       setTrainingLoading(false);
     }
@@ -1375,9 +1374,17 @@ export default function Home() {
         return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to update training playlist";
-        setTrainingError(message);
-        setStatusMessage(message);
-        await loadTrainingPlaylist();
+        const lowercase = message.toLowerCase();
+        const isNetworkError = error instanceof TypeError || lowercase.includes("failed to fetch") || lowercase.includes("network");
+        if (isNetworkError) {
+          const friendlyMessage = "Could not reach Mentra API. Changes are saved locally for now.";
+          setTrainingError(friendlyMessage);
+          setStatusMessage("Training playlist saved locally. We'll sync when the connection returns.");
+        } else {
+          setTrainingError(message);
+          setStatusMessage(message);
+          await loadTrainingPlaylist();
+        }
         return false;
       } finally {
         setTrainingSaving(false);
@@ -1474,21 +1481,21 @@ export default function Home() {
         return;
       }
 
-      const currentIds = trainingSelectedIds;
-      const unchanged = nextIds.length === currentIds.length && nextIds.every((id, index) => id === currentIds[index]);
-      if (unchanged) {
-        setTrainingManageOpen(false);
-        return;
-      }
-
       const nextItems = nextIds
         .map(id => menuItemsById.get(id))
         .filter((value): value is MenuItem => Boolean(value));
 
+      const currentIds = trainingSelectedIds;
+      const unchanged = nextIds.length === currentIds.length && nextIds.every((id, index) => id === currentIds[index]);
+      setTrainingManageOpen(false);
+      if (unchanged) {
+        return;
+      }
+
       setTrainingPlaylist(nextItems);
       const success = await syncTrainingPlaylist(nextItems, "Training playlist updated");
-      if (success) {
-        setTrainingManageOpen(false);
+      if (!success) {
+        return;
       }
     },
     [isAdmin, menuItemsById, syncTrainingPlaylist, trainingSaving, trainingSelectedIds]
