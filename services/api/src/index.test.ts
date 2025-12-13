@@ -112,6 +112,81 @@ describe("handler", () => {
     expect(payload.items[0].id).toBe("abc123");
   });
 
+  it("returns training playlist", async () => {
+    const sendSpy = vi.spyOn(docClient, "send").mockImplementation(async command => {
+      if (command instanceof QueryCommand) {
+        return {
+          Items: [
+            {
+              PK: "TENANT#tenant-1#MENU",
+              SK: "ITEM#abc123",
+              title: "Signature burger",
+              category: "Foods",
+              subcategory: "Main",
+              steps: ["Step 1"]
+            }
+          ]
+        } as never;
+      }
+
+      if (command instanceof GetCommand) {
+        return {
+          Item: {
+            PK: "TENANT#tenant-1#MENU",
+            SK: "CONFIG#TRAINING",
+            itemIds: ["abc123"]
+          }
+        } as never;
+      }
+
+      if (command instanceof PutCommand) {
+        return {} as never;
+      }
+
+      throw new Error(`Unexpected command: ${command.constructor.name}`);
+    });
+
+    const response = await handler(
+      mockEvent({
+        routeKey: "GET /menu/{tenantId}/training",
+        rawPath: "/menu/tenant-1/training",
+        pathParameters: { tenantId: "tenant-1" },
+        requestContext: { http: { method: "GET", path: "/menu/tenant-1/training" } }
+      })
+    );
+
+    expect(sendSpy).toHaveBeenCalled();
+    expect(response.statusCode).toBe(200);
+    const payload = JSON.parse(response.body ?? "{}");
+    expect(payload.itemIds).toEqual(["abc123"]);
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0].id).toBe("abc123");
+  });
+
+  it("updates training playlist", async () => {
+    const sendSpy = vi.spyOn(docClient, "send").mockImplementation(async command => {
+      if (command instanceof PutCommand) {
+        expect(command.input.Item).toMatchObject({ itemIds: ["abc123", "def456"] });
+        return {} as never;
+      }
+
+      return {} as never;
+    });
+
+    const response = await handler(
+      mockEvent({
+        routeKey: "PUT /menu/{tenantId}/training",
+        rawPath: "/menu/tenant-1/training",
+        pathParameters: { tenantId: "tenant-1" },
+        requestContext: { http: { method: "PUT", path: "/menu/tenant-1/training" } },
+        body: JSON.stringify({ itemIds: ["abc123", "def456"] })
+      })
+    );
+
+    expect(sendSpy).toHaveBeenCalled();
+    expect(response.statusCode).toBe(204);
+  });
+
   it("validates post body", async () => {
     const sendSpy = vi.spyOn(docClient, "send");
 

@@ -22,7 +22,7 @@ export const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "*",
-  "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS"
+  "Access-Control-Allow-Methods": "GET,POST,DELETE,PUT,OPTIONS"
 };
 
 const jsonHeaders = {
@@ -81,13 +81,25 @@ type MenuConfigRecord = {
   updatedAt?: string;
 };
 
+type MenuTrainingRecord = {
+  PK: string;
+  SK: string;
+  itemIds: string[];
+  updatedAt?: string;
+};
+
 type MenuOrdering = {
   categoryOrder: string[];
   subcategoryOrder: Record<string, string[]>;
   itemOrder: Record<string, string[]>;
 };
 
+type TrainingPlaylist = {
+  itemIds: string[];
+};
+
 const MENU_CONFIG_SK = "CONFIG#ORDERING";
+const MENU_TRAINING_SK = "CONFIG#TRAINING";
 
 const emptyOrdering: MenuOrdering = {
   categoryOrder: [],
@@ -95,10 +107,18 @@ const emptyOrdering: MenuOrdering = {
   itemOrder: {}
 };
 
+const emptyTraining: TrainingPlaylist = {
+  itemIds: []
+};
+
 const orderingSchema = z.object({
   categoryOrder: z.array(z.string()),
   subcategoryOrder: z.record(z.array(z.string())),
   itemOrder: z.record(z.array(z.string()))
+});
+
+const trainingSchema = z.object({
+  itemIds: z.array(z.string())
 });
 
 const toMenuResponse = (record: MenuRecord) => ({
@@ -148,6 +168,45 @@ const saveMenuOrdering = async (tenantId: string, ordering: MenuOrdering) => {
     categoryOrder: [...ordering.categoryOrder],
     subcategoryOrder: { ...ordering.subcategoryOrder },
     itemOrder: { ...ordering.itemOrder },
+    updatedAt: now
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: record
+    })
+  );
+};
+
+const getTrainingPlaylist = async (tenantId: string): Promise<TrainingPlaylist> => {
+  const response = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `TENANT#${tenantId}#MENU`,
+        SK: MENU_TRAINING_SK
+      }
+    })
+  );
+
+  if (!response.Item) {
+    return { ...emptyTraining };
+  }
+
+  const record = response.Item as MenuTrainingRecord;
+  return {
+    itemIds: Array.isArray(record.itemIds) ? [...record.itemIds] : []
+  };
+};
+
+const saveTrainingPlaylist = async (tenantId: string, playlist: TrainingPlaylist) => {
+  const now = new Date().toISOString();
+  const uniqueItemIds = [...new Set(playlist.itemIds)];
+  const record: MenuTrainingRecord = {
+    PK: `TENANT#${tenantId}#MENU`,
+    SK: MENU_TRAINING_SK,
+    itemIds: uniqueItemIds,
     updatedAt: now
   };
 
@@ -243,6 +302,24 @@ const normaliseOrderingWithItems = (menuItems: ReturnType<typeof toMenuResponse>
   return cleaned;
 };
 
+const normaliseTrainingPlaylistWithItems = (
+  menuItems: ReturnType<typeof toMenuResponse>[],
+  playlist: TrainingPlaylist
+): string[] => {
+  const existingIds = new Set(menuItems.map(item => item.id));
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+
+  for (const itemId of playlist.itemIds) {
+    if (existingIds.has(itemId) && !seen.has(itemId)) {
+      ordered.push(itemId);
+      seen.add(itemId);
+    }
+  }
+
+  return ordered;
+};
+
 const ensureItemInOrdering = async (tenantId: string, record: MenuRecord) => {
   const ordering = await getMenuOrdering(tenantId);
 
@@ -295,6 +372,16 @@ const removeItemFromOrdering = async (tenantId: string, itemId: string, category
   await saveMenuOrdering(tenantId, ordering);
 };
 
+const removeItemFromTraining = async (tenantId: string, itemId: string) => {
+  const playlist = await getTrainingPlaylist(tenantId);
+  if (!playlist.itemIds.includes(itemId)) {
+    return;
+  }
+
+  const nextIds = playlist.itemIds.filter(id => id !== itemId);
+  await saveTrainingPlaylist(tenantId, { itemIds: nextIds });
+};
+
 const ok = (statusCode: number, payload: unknown): APIGatewayProxyResultV2 => ({
   statusCode,
   headers: jsonHeaders,
@@ -323,7 +410,7 @@ const ensureItemId = (params: APIGatewayProxyEventV2["pathParameters"]): string 
   return itemId;
 };
 
-const listMenuState = async (tenantId: string) => {
+const listMenuItems = async (tenantId: string) => {
   const response = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
@@ -335,7 +422,11 @@ const listMenuState = async (tenantId: string) => {
     })
   );
 
-  const items = (response.Items ?? []).map(item => toMenuResponse(item as MenuRecord));
+  return (response.Items ?? []).map(item => toMenuResponse(item as MenuRecord));
+};
+
+const listMenuState = async (tenantId: string) => {
+  const items = await listMenuItems(tenantId);
   const ordering = await getMenuOrdering(tenantId);
   const normalisedOrdering = normaliseOrderingWithItems(items, ordering);
 
@@ -424,6 +515,7 @@ const deleteMenuItem = async (tenantId: string, itemId: string) => {
   const record = existing.Item as MenuRecord | undefined;
   if (record) {
     await removeItemFromOrdering(tenantId, itemId, record.category, record.subcategory);
+    await removeItemFromTraining(tenantId, itemId);
   }
 };
 
@@ -466,6 +558,39 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
         }
         const parsed = orderingSchema.parse(json);
         await saveMenuOrdering(tenantId, parsed);
+        return ok(204, {});
+      }
+      case "GET /menu/{tenantId}/training": {
+        const tenantId = ensureTenantId(event.pathParameters);
+        const [menuItems, playlist] = await Promise.all([
+          listMenuItems(tenantId),
+          getTrainingPlaylist(tenantId)
+        ]);
+
+        const normalisedIds = normaliseTrainingPlaylistWithItems(menuItems, playlist);
+        if (JSON.stringify(normalisedIds) !== JSON.stringify(playlist.itemIds)) {
+          await saveTrainingPlaylist(tenantId, { itemIds: normalisedIds });
+        }
+
+        const itemById = new Map(menuItems.map(item => [item.id, item]));
+        const items = normalisedIds
+          .map(itemId => itemById.get(itemId))
+          .filter((item): item is ReturnType<typeof toMenuResponse> => Boolean(item));
+
+        return ok(200, { itemIds: normalisedIds, items });
+      }
+      case "PUT /menu/{tenantId}/training": {
+        const tenantId = ensureTenantId(event.pathParameters);
+        let json: unknown = {};
+        if (event.body) {
+          try {
+            json = JSON.parse(event.body);
+          } catch {
+            throw new createError.BadRequest("Request body must be valid JSON");
+          }
+        }
+        const parsed = trainingSchema.parse(json);
+        await saveTrainingPlaylist(tenantId, { itemIds: parsed.itemIds });
         return ok(204, {});
       }
       case "GET /menu/{tenantId}/{itemId}": {

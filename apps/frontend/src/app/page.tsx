@@ -11,8 +11,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { useDroppable } from "@dnd-kit/core";
 import type { MenuCategory, MenuItem, MenuOrdering } from "@/data/menu";
 import { groupMenuItems } from "@/data/menu";
-import { deleteMenuItem, fetchMenuState, updateMenuOrdering, upsertMenuItem } from "@/lib/menu-service";
+import { deleteMenuItem, fetchMenuState, fetchTrainingPlaylist, updateMenuOrdering, updateTrainingPlaylist, upsertMenuItem } from "@/lib/menu-service";
 import type { UpsertMenuInput } from "@/lib/menu-service";
+import { appConfig } from "@/lib/config";
 import { useAuth } from "@/providers/auth-provider";
 
 type ModalState = {
@@ -300,8 +301,12 @@ type DragDataItem = {
   subcategoryId: string;
   itemId: string;
 };
+type DragDataTraining = {
+  type: "training";
+  itemId: string;
+};
 
-type DragData = DragDataCategory | DragDataSubcategory | DragDataSubcategoryContainer | DragDataItem;
+type DragData = DragDataCategory | DragDataSubcategory | DragDataSubcategoryContainer | DragDataItem | DragDataTraining;
 
 const orderingKeyFor = (categoryId: string, subcategoryId: string) => `${categoryId}::${subcategoryId}`;
 
@@ -546,6 +551,77 @@ const buildFormValues = (source?: MenuItem | null): FormValues => {
   };
 };
 
+type TrainingItemRowProps = {
+  item: MenuItem;
+  isAdmin: boolean;
+  isCompleted: boolean;
+  onToggleComplete: () => void;
+  onRemove: () => void;
+  disabled?: boolean;
+};
+
+const TrainingItemRow = ({ item, isAdmin, isCompleted, onToggleComplete, onRemove, disabled = false }: TrainingItemRowProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `training:${item.id}`,
+    data: {
+      type: "training",
+      itemId: item.id
+    } satisfies DragDataTraining,
+    disabled: !isAdmin || disabled
+  });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2 transition ${isCompleted ? "opacity-60" : ""}`}
+    >
+      {isAdmin ? (
+        <button
+          type="button"
+          aria-label={`Reorder ${item.title}`}
+          className="flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={disabled}
+          {...attributes}
+          {...listeners}
+        >
+          <GripIcon className="h-3 w-3" />
+        </button>
+      ) : null}
+      <input
+        type="checkbox"
+        checked={isCompleted}
+        onChange={onToggleComplete}
+        className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-400"
+      />
+      <Link
+        href={`/items/${PLACEHOLDER_ITEM_ID}?id=${encodeURIComponent(item.id)}`}
+        className={`flex-1 text-sm font-medium transition hover:underline ${isCompleted ? "line-through text-neutral-500" : "text-neutral-800"}`}
+        prefetch={false}
+      >
+        {item.title}
+      </Link>
+      {isAdmin ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={disabled}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label={`Remove ${item.title} from training`}
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
+      ) : null}
+    </li>
+  );
+};
+
 const GripIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 20 20" aria-hidden="true" className={className} focusable="false">
     <circle cx="6" cy="6" r="1.5" fill="currentColor" />
@@ -698,6 +774,150 @@ const TemplateSeedModal = ({
     </div>
   </div>
 );
+
+const TrainingManageModal = ({
+  items,
+  selectedIds,
+  saving,
+  onSave,
+  onClose
+}: {
+  items: MenuItem[];
+  selectedIds: string[];
+  saving: boolean;
+  onSave: (itemIds: string[]) => void;
+  onClose: () => void;
+}) => {
+  const [search, setSearch] = useState("");
+  const [selection, setSelection] = useState<string[]>(selectedIds);
+
+  useEffect(() => {
+    setSelection(selectedIds);
+  }, [selectedIds]);
+
+  const grouped = useMemo(() => groupMenuItems(items), [items]);
+  const searchValue = search.trim().toLowerCase();
+  const selectedSet = useMemo(() => new Set(selection), [selection]);
+
+  const toggleSelection = (itemId: string) => {
+    setSelection(prev => {
+      if (prev.includes(itemId)) {
+        return prev.filter(id => id !== itemId);
+      }
+      return [...prev, itemId];
+    });
+  };
+
+  const handleSave = () => {
+    onSave(selection);
+  };
+
+  const matchesSearch = (item: MenuItem, categoryLabel: string, subcategoryLabel: string) => {
+    if (!searchValue) {
+      return true;
+    }
+    const haystack = `${item.title} ${categoryLabel} ${subcategoryLabel}`.toLowerCase();
+    return haystack.includes(searchValue);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+      <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl sm:p-8 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-neutral-900">Manage training playlist</h2>
+            <p className="mt-1 text-sm text-neutral-600">Select which menu items appear in the training playlist. New selections are added to the end of the list.</p>
+          </div>
+          <button
+            type="button"
+            onClick={saving ? undefined : onClose}
+            disabled={saving}
+            className="rounded-full border border-neutral-200 px-3 py-1 text-sm text-neutral-600 transition hover:bg-neutral-100 disabled:opacity-60"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <input
+              type="search"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Search by item, category, or subcategory"
+              className="flex-1 rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+            <span className="text-sm text-neutral-500">
+              {selection.length} selected
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            {grouped.map(category => (
+              <div key={category.id} className="rounded-xl border border-neutral-200">
+                <header className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
+                  <h3 className="text-sm font-semibold text-neutral-800">{category.label}</h3>
+                </header>
+                <div className="space-y-3 p-4">
+                  {category.subCategories.map(subcategory => {
+                    const visibleItems = subcategory.items.filter(item => matchesSearch(item, category.label, subcategory.label));
+                    if (!visibleItems.length) {
+                      return null;
+                    }
+                    return (
+                      <div key={subcategory.id} className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{subcategory.label}</p>
+                        <div className="space-y-2">
+                          {visibleItems.map(item => {
+                            const isSelected = selectedSet.has(item.id);
+                            return (
+                              <label
+                                key={item.id}
+                                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm transition ${isSelected ? "border-blue-300 bg-blue-50" : "border-neutral-200"}`}
+                              >
+                                <span className={`font-medium ${isSelected ? "text-blue-700" : "text-neutral-800"}`}>{item.title}</span>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleSelection(item.id)}
+                                  disabled={saving}
+                                  className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-400"
+                                />
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-between gap-3">
+          <button
+            type="button"
+            onClick={saving ? undefined : onClose}
+            disabled={saving}
+            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-600 transition hover:bg-neutral-100 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={saving ? undefined : handleSave}
+            disabled={saving}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const FloatingAddButton = ({ onClick }: { onClick: () => void }) => (
   <button
@@ -865,8 +1085,19 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [orderingSaving, setOrderingSaving] = useState(false);
   const [templateCreating, setTemplateCreating] = useState(false);
+  const [trainingPlaylist, setTrainingPlaylist] = useState<MenuItem[]>([]);
+  const [trainingCompletion, setTrainingCompletion] = useState<Record<string, boolean>>({});
+  const [trainingManageOpen, setTrainingManageOpen] = useState(false);
+  const [trainingLoading, setTrainingLoading] = useState(false);
+  const [trainingSaving, setTrainingSaving] = useState(false);
+  const [trainingError, setTrainingError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
+  const trainingStorageKey = useMemo(() => {
+    const tenant = appConfig.tenantId ?? "default";
+    const userId = user?.id ?? "guest";
+    return `mentra:training-progress:${tenant}:${userId}`;
+  }, [user?.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -894,6 +1125,24 @@ export default function Home() {
     }
   }, []);
 
+  const loadTrainingPlaylist = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+    setTrainingLoading(true);
+    try {
+      const state = await fetchTrainingPlaylist();
+      setTrainingPlaylist(state.items);
+      setTrainingError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load training playlist";
+      setTrainingError(message);
+      setTrainingPlaylist([]);
+    } finally {
+      setTrainingLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     if (statusMessage) {
@@ -909,11 +1158,75 @@ export default function Home() {
   useEffect(() => {
     if (!loading && user) {
       void loadMenu();
+      void loadTrainingPlaylist();
     }
     if (!user) {
       setMenuItems([]);
+      setTrainingPlaylist([]);
+      setTrainingCompletion({});
+      setTrainingManageOpen(false);
+      setTrainingError(null);
+      setTrainingLoading(false);
+      setTrainingSaving(false);
     }
-  }, [loading, user, loadMenu]);
+  }, [loading, user, loadMenu, loadTrainingPlaylist]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem(trainingStorageKey);
+      if (!stored) {
+        setTrainingCompletion({});
+        return;
+      }
+      const parsed = JSON.parse(stored) as Record<string, unknown> | null;
+      if (!parsed || typeof parsed !== "object") {
+        setTrainingCompletion({});
+        return;
+      }
+      const next: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === "boolean") {
+          next[key] = value;
+        }
+      }
+      setTrainingCompletion(next);
+    } catch (storageError) {
+      console.warn("Failed to load training progress", storageError);
+      setTrainingCompletion({});
+    }
+  }, [user, trainingStorageKey]);
+
+  useEffect(() => {
+    setTrainingCompletion(prev => {
+      const validIds = new Set(trainingPlaylist.map(item => item.id));
+      let changed = false;
+      const next: Record<string, boolean> = {};
+      for (const [id, value] of Object.entries(prev)) {
+        if (validIds.has(id)) {
+          next[id] = value;
+        } else {
+          changed = true;
+        }
+      }
+      if (!changed && Object.keys(next).length === Object.keys(prev).length) {
+        return prev;
+      }
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(trainingStorageKey, JSON.stringify(next));
+        } catch (storageError) {
+          console.warn("Failed to persist training progress", storageError);
+        }
+      }
+      return next;
+    });
+  }, [trainingPlaylist, trainingStorageKey]);
 
   const toggleCategory = (id: string) => {
     setOpenCategories(prev => ({ ...prev, [id]: !prev[id] }));
@@ -927,6 +1240,14 @@ export default function Home() {
   const groupedCategories: MenuCategory[] = useMemo(() => {
     return groupMenuItems(menuItems, ordering ?? undefined);
   }, [menuItems, ordering]);
+
+  const menuItemsById = useMemo(() => {
+    const map = new Map<string, MenuItem>();
+    for (const item of menuItems) {
+      map.set(item.id, item);
+    }
+    return map;
+  }, [menuItems]);
 
   const categoryLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -945,6 +1266,19 @@ export default function Home() {
     }
     return map;
   }, [groupedCategories]);
+
+  const trainingCompletedCount = useMemo(() => {
+    return trainingPlaylist.reduce((count, item) => (trainingCompletion[item.id] ? count + 1 : count), 0);
+  }, [trainingPlaylist, trainingCompletion]);
+
+  const trainingProgressPercent = useMemo(() => {
+    if (!trainingPlaylist.length) {
+      return 0;
+    }
+    return Math.min(100, Math.max(0, Math.round((trainingCompletedCount / trainingPlaylist.length) * 100)));
+  }, [trainingCompletedCount, trainingPlaylist]);
+
+  const trainingSelectedIds = useMemo(() => trainingPlaylist.map(item => item.id), [trainingPlaylist]);
 
   const closeModal = () => {
     setModalState({ open: false, mode: "create", item: undefined, initialValues: undefined });
@@ -1013,6 +1347,7 @@ export default function Home() {
         setCreateFlowStep("idle");
         setOrdering(orderingPayload);
         await loadMenu();
+        await loadTrainingPlaylist();
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to create sample menu";
         setStatusMessage(message);
@@ -1046,6 +1381,141 @@ export default function Home() {
       }
     },
     [isAdmin, loadMenu]
+  );
+
+  const syncTrainingPlaylist = useCallback(
+    async (nextItems: MenuItem[], successMessage?: string) => {
+      if (!isAdmin) {
+        return true;
+      }
+
+      setTrainingSaving(true);
+      try {
+        await updateTrainingPlaylist(nextItems.map(item => item.id));
+        setTrainingError(null);
+        if (successMessage) {
+          setStatusMessage(successMessage);
+        }
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to update training playlist";
+        setTrainingError(message);
+        setStatusMessage(message);
+        await loadTrainingPlaylist();
+        return false;
+      } finally {
+        setTrainingSaving(false);
+      }
+    },
+    [isAdmin, loadTrainingPlaylist]
+  );
+
+  const handleTrainingDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (!isAdmin || trainingSaving) {
+        return;
+      }
+
+      const { active, over } = event;
+      if (!active || !over) {
+        return;
+      }
+
+      const activeData = active.data.current as DragDataTraining | undefined;
+      const overData = over.data.current as DragDataTraining | undefined;
+
+      if (!activeData || activeData.type !== "training") {
+        return;
+      }
+
+      if (!overData || overData.type !== "training") {
+        return;
+      }
+
+      if (activeData.itemId === overData.itemId) {
+        return;
+      }
+
+      setTrainingPlaylist(prev => {
+        const fromIndex = prev.findIndex(item => item.id === activeData.itemId);
+        const toIndex = prev.findIndex(item => item.id === overData.itemId);
+
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+          return prev;
+        }
+
+        const next = arrayMove(prev, fromIndex, toIndex);
+        void syncTrainingPlaylist(next);
+        return next;
+      });
+    },
+    [isAdmin, trainingSaving, syncTrainingPlaylist]
+  );
+
+  const handleTrainingRemove = useCallback(
+    (itemId: string) => {
+      if (!isAdmin || trainingSaving) {
+        return;
+      }
+
+      setTrainingPlaylist(prev => {
+        const next = prev.filter(item => item.id !== itemId);
+        if (next.length === prev.length) {
+          return prev;
+        }
+        void syncTrainingPlaylist(next, "Training playlist updated");
+        return next;
+      });
+    },
+    [isAdmin, trainingSaving, syncTrainingPlaylist]
+  );
+
+  const handleTrainingToggleComplete = useCallback(
+    (itemId: string) => {
+      setTrainingCompletion(prev => {
+        const next = { ...prev };
+        if (next[itemId]) {
+          delete next[itemId];
+        } else {
+          next[itemId] = true;
+        }
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(trainingStorageKey, JSON.stringify(next));
+          } catch (storageError) {
+            console.warn("Failed to persist training progress", storageError);
+          }
+        }
+        return next;
+      });
+    },
+    [trainingStorageKey]
+  );
+
+  const handleTrainingManageSave = useCallback(
+    async (nextIds: string[]) => {
+      if (!isAdmin || trainingSaving) {
+        return;
+      }
+
+      const currentIds = trainingSelectedIds;
+      const unchanged = nextIds.length === currentIds.length && nextIds.every((id, index) => id === currentIds[index]);
+      if (unchanged) {
+        setTrainingManageOpen(false);
+        return;
+      }
+
+      const nextItems = nextIds
+        .map(id => menuItemsById.get(id))
+        .filter((value): value is MenuItem => Boolean(value));
+
+      setTrainingPlaylist(nextItems);
+      const success = await syncTrainingPlaylist(nextItems, "Training playlist updated");
+      if (success) {
+        setTrainingManageOpen(false);
+      }
+    },
+    [isAdmin, menuItemsById, syncTrainingPlaylist, trainingSaving, trainingSelectedIds]
   );
 
   const handleDragEnd = useCallback(
@@ -1216,6 +1686,7 @@ export default function Home() {
       await deleteMenuItem(item.id);
       setStatusMessage("Menu item deleted");
       await loadMenu();
+      await loadTrainingPlaylist();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete menu item";
       setStatusMessage(message);
@@ -1229,6 +1700,7 @@ export default function Home() {
       setStatusMessage(values.itemId ? "Menu item updated" : "Menu item created");
       closeModal();
       await loadMenu();
+      await loadTrainingPlaylist();
     } finally {
       setSaving(false);
     }
@@ -1296,6 +1768,81 @@ export default function Home() {
               </div>
 
               {menuError ? <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{menuError}</p> : null}
+
+              <div className="rounded-3xl border border-blue-200 bg-blue-50/60 p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-neutral-900">Training playlist</h3>
+                    <p className="text-sm text-neutral-600">Work through these items and mark them complete as you go.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {trainingSaving ? <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">Syncing…</span> : null}
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => setTrainingManageOpen(true)}
+                        disabled={trainingLoading || trainingSaving || menuLoading}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        Manage playlist
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="mt-4 space-y-4">
+                  {trainingError ? (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{trainingError}</p>
+                  ) : null}
+                  {trainingLoading ? (
+                    <div className="flex h-20 items-center justify-center text-sm text-neutral-600">Loading training playlist…</div>
+                  ) : null}
+                  {!trainingLoading && trainingPlaylist.length > 0 ? (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs font-medium text-neutral-600">
+                          <span>
+                            {trainingCompletedCount} of {trainingPlaylist.length} completed
+                          </span>
+                          <span>{trainingProgressPercent}%</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-white">
+                          <div
+                            className="h-full rounded-full bg-blue-500 transition-all"
+                            style={{ width: `${trainingProgressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTrainingDragEnd}>
+                        <SortableContext
+                          items={trainingPlaylist.map(item => `training:${item.id}`)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <ul className="space-y-2">
+                            {trainingPlaylist.map(item => (
+                              <TrainingItemRow
+                                key={item.id}
+                                item={item}
+                                isAdmin={isAdmin}
+                                isCompleted={Boolean(trainingCompletion[item.id])}
+                                onToggleComplete={() => handleTrainingToggleComplete(item.id)}
+                                onRemove={() => handleTrainingRemove(item.id)}
+                                disabled={trainingSaving}
+                              />
+                            ))}
+                          </ul>
+                        </SortableContext>
+                      </DndContext>
+                    </>
+                  ) : null}
+                  {!trainingLoading && !trainingError && trainingPlaylist.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-blue-200 bg-white px-4 py-6 text-sm text-neutral-600">
+                      {isAdmin
+                        ? "No items in the training playlist yet. Use Manage playlist to add cards."
+                        : "Your manager hasn't published a training playlist yet. Check back soon."}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
 
               {menuLoading ? (
                 <div className="flex min-h-[20vh] items-center justify-center text-neutral-500">Loading menu…</div>
@@ -1390,6 +1937,16 @@ export default function Home() {
           </>
         ) : null}
       </main>
+
+      {isAdmin && trainingManageOpen ? (
+        <TrainingManageModal
+          items={menuItems}
+          selectedIds={trainingSelectedIds}
+          saving={trainingSaving}
+          onSave={handleTrainingManageSave}
+          onClose={() => setTrainingManageOpen(false)}
+        />
+      ) : null}
 
       {isAdmin && createFlowStep === "choice" ? (
         <CreateChoiceModal

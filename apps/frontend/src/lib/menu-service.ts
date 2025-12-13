@@ -16,6 +16,11 @@ export type MenuState = {
   ordering: MenuOrdering;
 };
 
+export type TrainingPlaylistState = {
+  itemIds: string[];
+  items: MenuItem[];
+};
+
 type ApiMenuItem = {
   id?: unknown;
   title?: unknown;
@@ -187,6 +192,46 @@ export const fetchMenuItem = async (itemId: string, config: FetchConfig = {}): P
   }
 
   return normalizeItem(data.item);
+};
+
+export const fetchTrainingPlaylist = async (config: FetchConfig = {}): Promise<TrainingPlaylistState> => {
+  const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}/training`), {
+    cache: config.cache ?? "no-store",
+    signal: config.signal
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load training playlist (${response.status})`);
+  }
+
+  const data = (await response.json()) as { itemIds?: unknown; items?: unknown };
+  const itemIds = Array.isArray(data.itemIds)
+    ? (data.itemIds.filter(entry => typeof entry === "string") as string[])
+    : [];
+  const items = Array.isArray(data.items) ? data.items : [];
+  const normalisedItems = items.map(entry => normalizeItem(entry as ApiMenuItem));
+
+  const validIds = itemIds.filter(id => normalisedItems.some(item => item.id === id));
+
+  return {
+    itemIds: validIds,
+    items: validIds.map(id => normalisedItems.find(item => item.id === id)!).filter(Boolean)
+  };
+};
+
+export const updateTrainingPlaylist = async (itemIds: string[]): Promise<void> => {
+  const response = await fetch(buildUrl(`/menu/${appConfig.tenantId}/training`), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ itemIds })
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `Failed to update training playlist (status ${response.status})`);
+  }
 };
 
 export const upsertMenuItem = async (payload: UpsertMenuInput): Promise<MenuItem> => {
