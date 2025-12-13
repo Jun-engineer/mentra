@@ -200,6 +200,12 @@ export class MentraStack extends Stack {
       integration: apiIntegration
     });
 
+    api.addRoutes({
+      path: "/menu/{tenantId}/training",
+      methods: [HttpMethod.GET, HttpMethod.PUT],
+      integration: apiIntegration
+    });
+
     new CfnOutput(this, "FrontendBucketName", {
       value: frontendBucket.bucketName,
       exportName: "MentraFrontendBucketName"
