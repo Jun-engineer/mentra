@@ -871,6 +871,7 @@ export default function Home() {
   const [trainingCompletion, setTrainingCompletion] = useState<Record<string, boolean>>({});
   const [trainingLoading, setTrainingLoading] = useState(false);
   const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [trainingPlaylistHydrated, setTrainingPlaylistHydrated] = useState(false);
   const [userConsoleOpen, setUserConsoleOpen] = useState(false);
   const [userProgress, setUserProgress] = useState<Record<string, { completed: number; total: number }>>({});
   const [userFormState, setUserFormState] = useState<
@@ -930,6 +931,7 @@ export default function Home() {
       const state = await fetchTrainingPlaylist();
       setTrainingPlaylist(state.items);
       setTrainingError(null);
+      setTrainingPlaylistHydrated(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load training menu";
       setTrainingError(message);
@@ -961,6 +963,7 @@ export default function Home() {
       setTrainingCompletion({});
       setTrainingError(null);
       setTrainingLoading(false);
+      setTrainingPlaylistHydrated(false);
     }
   }, [loading, user, loadMenu, loadTrainingPlaylist]);
 
@@ -1028,6 +1031,9 @@ export default function Home() {
   }, [user, trainingStorageKey, readTrainingCompletion]);
 
   useEffect(() => {
+    if (!trainingPlaylistHydrated) {
+      return;
+    }
     setTrainingCompletion(prev => {
       const validIds = new Set(trainingPlaylist.map(item => item.id));
       let changed = false;
@@ -1052,7 +1058,7 @@ export default function Home() {
       }
       return next;
     });
-  }, [trainingPlaylist, trainingStorageKey]);
+  }, [trainingPlaylistHydrated, trainingPlaylist, trainingStorageKey]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -1092,6 +1098,9 @@ export default function Home() {
     if (typeof window === "undefined") {
       return;
     }
+    if (!trainingPlaylistHydrated) {
+      return;
+    }
     const total = trainingPlaylist.length;
     const next: Record<string, { completed: number; total: number }> = {};
     for (const account of accounts) {
@@ -1122,7 +1131,7 @@ export default function Home() {
       }
     }
     setUserProgress(next);
-  }, [accounts, isAdmin, tenantId, trainingPlaylist]);
+  }, [accounts, isAdmin, tenantId, trainingPlaylistHydrated, trainingPlaylist]);
 
   const openCreateUserForm = () => {
     setUserFormState({

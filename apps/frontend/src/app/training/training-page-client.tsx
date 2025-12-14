@@ -273,6 +273,7 @@ export default function TrainingPageClient() {
   const [trainingLoading, setTrainingLoading] = useState(false);
   const [trainingSaving, setTrainingSaving] = useState(false);
   const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [trainingPlaylistHydrated, setTrainingPlaylistHydrated] = useState(false);
   const [trainingManageOpen, setTrainingManageOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -318,6 +319,7 @@ export default function TrainingPageClient() {
       const state = await fetchTrainingPlaylist();
       setTrainingPlaylist(state.items);
       setTrainingError(null);
+      setTrainingPlaylistHydrated(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load training menu";
       setTrainingError(message);
@@ -355,6 +357,7 @@ export default function TrainingPageClient() {
       setTrainingLoading(false);
       setTrainingSaving(false);
       setTrainingManageOpen(false);
+      setTrainingPlaylistHydrated(false);
     }
   }, [loading, user, isAdmin, loadMenu, loadTrainingPlaylist]);
 
@@ -390,6 +393,9 @@ export default function TrainingPageClient() {
   }, [user, trainingStorageKey]);
 
   useEffect(() => {
+    if (!trainingPlaylistHydrated) {
+      return;
+    }
     setTrainingCompletion(prev => {
       const validIds = new Set(trainingPlaylist.map(item => item.id));
       let changed = false;
@@ -414,7 +420,7 @@ export default function TrainingPageClient() {
       }
       return next;
     });
-  }, [trainingPlaylist, trainingStorageKey]);
+  }, [trainingPlaylistHydrated, trainingPlaylist, trainingStorageKey]);
 
   const menuItemsById = useMemo(() => {
     const map = new Map<string, MenuItem>();
