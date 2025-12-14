@@ -34,6 +34,19 @@ const TrashIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+type TrainingProgressEventDetail = {
+  key: string;
+};
+
+const notifyTrainingProgressChange = (storageKey: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent<TrainingProgressEventDetail>("mentra:training-progress-change", {
+    detail: { key: storageKey }
+  }));
+};
+
 type DragDataTraining = {
   type: "training";
   itemId: string;
@@ -394,6 +407,7 @@ export default function TrainingPageClient() {
       if (typeof window !== "undefined") {
         try {
           window.localStorage.setItem(trainingStorageKey, JSON.stringify(next));
+          notifyTrainingProgressChange(trainingStorageKey);
         } catch (storageError) {
           console.warn("Failed to persist training progress", storageError);
         }
@@ -530,6 +544,7 @@ export default function TrainingPageClient() {
         if (typeof window !== "undefined") {
           try {
             window.localStorage.setItem(trainingStorageKey, JSON.stringify(next));
+            notifyTrainingProgressChange(trainingStorageKey);
           } catch (storageError) {
             console.warn("Failed to persist training progress", storageError);
           }

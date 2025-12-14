@@ -4,11 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useAuth, testAccounts } from "@/providers/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loading } = useAuth();
+  const { login, loading, accounts } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export default function LoginPage() {
         <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
           <h2 className="text-sm font-semibold text-neutral-700">Demo accounts</h2>
           <ul className="mt-3 space-y-3 text-sm text-neutral-600">
-            {testAccounts.map(account => (
+            {accounts.map(account => (
               <li key={account.id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2">
                 <div>
                   <p className="font-medium text-neutral-800">{account.name}</p>
@@ -98,6 +98,11 @@ export default function LoginPage() {
                 </button>
               </li>
             ))}
+            {accounts.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-3 py-4 text-center text-xs text-neutral-500">
+                No demo users available. Please ask an administrator to create one.
+              </li>
+            ) : null}
           </ul>
         </div>
 

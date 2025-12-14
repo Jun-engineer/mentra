@@ -14,7 +14,7 @@ import { groupMenuItems } from "@/data/menu";
 import { deleteMenuItem, fetchMenuState, fetchTrainingPlaylist, updateMenuOrdering, upsertMenuItem } from "@/lib/menu-service";
 import type { UpsertMenuInput } from "@/lib/menu-service";
 import { appConfig } from "@/lib/config";
-import { useAuth } from "@/providers/auth-provider";
+import { useAuth, type AuthAccount } from "@/providers/auth-provider";
 
 type ModalState = {
   open: boolean;
@@ -289,6 +289,26 @@ const cloneOrdering = (ordering: MenuOrdering): MenuOrdering => ({
   itemOrder: Object.fromEntries(Object.entries(ordering.itemOrder).map(([key, list]) => [key, [...list]]))
 });
 
+type TrainingProgressEventDetail = {
+  key: string;
+};
+
+const notifyTrainingProgressChange = (storageKey: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent<TrainingProgressEventDetail>("mentra:training-progress-change", {
+    detail: { key: storageKey }
+  }));
+};
+
+type UserFormValues = {
+  name: string;
+  email: string;
+  password: string;
+  role: "admin" | "staff";
+};
+
 type CategoryPanelProps = {
   category: MenuCategory;
   isOpen: boolean;
@@ -560,6 +580,12 @@ const TrashIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const MenuIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
+    <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" fill="currentColor" />
+  </svg>
+);
+
 const CreateChoiceModal = ({
   onSelectTemplate,
   onSelectCustom,
@@ -828,7 +854,7 @@ const MenuItemForm = ({
 };
 
 export default function Home() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, accounts, createUser, updateUser, deleteUser } = useAuth();
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openSubCategories, setOpenSubCategories] = useState<Record<string, boolean>>({});
   const [modalState, setModalState] = useState<ModalState>({ open: false, mode: "create" });
@@ -845,13 +871,29 @@ export default function Home() {
   const [trainingCompletion, setTrainingCompletion] = useState<Record<string, boolean>>({});
   const [trainingLoading, setTrainingLoading] = useState(false);
   const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [userConsoleOpen, setUserConsoleOpen] = useState(false);
+  const [userProgress, setUserProgress] = useState<Record<string, { completed: number; total: number }>>({});
+  const [userFormState, setUserFormState] = useState<
+    | {
+        mode: "create";
+        values: UserFormValues;
+      }
+    | {
+        mode: "edit";
+        userId: string;
+        values: UserFormValues;
+      }
+    | null
+  >(null);
+  const [userFormError, setUserFormError] = useState<string | null>(null);
+  const [userFormSaving, setUserFormSaving] = useState(false);
 
   const isAdmin = user?.role === "admin";
+  const tenantId = appConfig.tenantId ?? "default";
   const trainingStorageKey = useMemo(() => {
-    const tenant = appConfig.tenantId ?? "default";
     const userId = user?.id ?? "guest";
-    return `mentra:training-progress:${tenant}:${userId}`;
-  }, [user?.id]);
+    return `mentra:training-progress:${tenantId}:${userId}`;
+  }, [tenantId, user?.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -922,8 +964,9 @@ export default function Home() {
     }
   }, [loading, user, loadMenu, loadTrainingPlaylist]);
 
-  useEffect(() => {
+  const readTrainingCompletion = useCallback(() => {
     if (!user) {
+      setTrainingCompletion({});
       return;
     }
     if (typeof window === "undefined") {
@@ -954,6 +997,37 @@ export default function Home() {
   }, [user, trainingStorageKey]);
 
   useEffect(() => {
+    if (!user) {
+      setTrainingCompletion({});
+      return;
+    }
+    readTrainingCompletion();
+  }, [user, trainingStorageKey, readTrainingCompletion]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const handleProgressChange = (event: Event) => {
+      const customEvent = event as CustomEvent<TrainingProgressEventDetail | undefined>;
+      const detailKey = customEvent.detail?.key;
+      if (detailKey && detailKey !== trainingStorageKey) {
+        return;
+      }
+      readTrainingCompletion();
+    };
+    const handlePageShow = () => {
+      readTrainingCompletion();
+    };
+    window.addEventListener("mentra:training-progress-change", handleProgressChange as EventListener);
+    window.addEventListener("pageshow", handlePageShow as EventListener);
+    return () => {
+      window.removeEventListener("mentra:training-progress-change", handleProgressChange as EventListener);
+      window.removeEventListener("pageshow", handlePageShow as EventListener);
+    };
+  }, [user, trainingStorageKey, readTrainingCompletion]);
+
+  useEffect(() => {
     setTrainingCompletion(prev => {
       const validIds = new Set(trainingPlaylist.map(item => item.id));
       let changed = false;
@@ -971,6 +1045,7 @@ export default function Home() {
       if (typeof window !== "undefined") {
         try {
           window.localStorage.setItem(trainingStorageKey, JSON.stringify(next));
+          notifyTrainingProgressChange(trainingStorageKey);
         } catch (storageError) {
           console.warn("Failed to persist training progress", storageError);
         }
@@ -978,6 +1053,193 @@ export default function Home() {
       return next;
     });
   }, [trainingPlaylist, trainingStorageKey]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      if (userConsoleOpen) {
+        setUserConsoleOpen(false);
+      }
+      if (userFormState) {
+        setUserFormState(null);
+        setUserFormError(null);
+      }
+    }
+  }, [isAdmin, userConsoleOpen, userFormState]);
+
+  useEffect(() => {
+    if (!userConsoleOpen) {
+      if (userFormState) {
+        setUserFormState(null);
+        setUserFormError(null);
+      }
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setUserConsoleOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [userConsoleOpen, userFormState]);
+
+  const refreshUserProgress = useCallback(() => {
+    if (!isAdmin) {
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    const total = trainingPlaylist.length;
+    const next: Record<string, { completed: number; total: number }> = {};
+    for (const account of accounts) {
+      const storageKey = `mentra:training-progress:${tenantId}:${account.id}`;
+      try {
+        const stored = window.localStorage.getItem(storageKey);
+        if (!stored) {
+          next[account.id] = { completed: 0, total };
+          continue;
+        }
+        const parsed = JSON.parse(stored) as Record<string, unknown> | null;
+        if (!parsed || typeof parsed !== "object") {
+          next[account.id] = { completed: 0, total };
+          continue;
+        }
+        const record = parsed as Record<string, unknown>;
+        let completed = 0;
+        for (const item of trainingPlaylist) {
+          const value = record[item.id];
+          if (typeof value === "boolean" && value) {
+            completed += 1;
+          }
+        }
+        next[account.id] = { completed, total };
+      } catch (storageError) {
+        console.warn("Failed to parse training progress for", account.id, storageError);
+        next[account.id] = { completed: 0, total };
+      }
+    }
+    setUserProgress(next);
+  }, [accounts, isAdmin, tenantId, trainingPlaylist]);
+
+  const openCreateUserForm = () => {
+    setUserFormState({
+      mode: "create",
+      values: {
+        name: "",
+        email: "",
+        password: "",
+        role: "staff"
+      }
+    });
+    setUserFormError(null);
+  };
+
+  const openEditUserForm = (account: AuthAccount) => {
+    setUserFormState({
+      mode: "edit",
+      userId: account.id,
+      values: {
+        name: account.name,
+        email: account.email,
+        password: account.password,
+        role: account.role
+      }
+    });
+    setUserFormError(null);
+  };
+
+  const closeUserForm = () => {
+    setUserFormState(null);
+    setUserFormError(null);
+  };
+
+  const handleUserFormChange = <Key extends keyof UserFormValues>(field: Key, value: UserFormValues[Key]) => {
+    setUserFormState(prev => {
+      if (!prev) {
+        return prev;
+      }
+      return {
+        ...prev,
+        values: {
+          ...prev.values,
+          [field]: value
+        }
+      };
+    });
+  };
+
+  const handleUserFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!userFormState) {
+      return;
+    }
+    setUserFormError(null);
+    setUserFormSaving(true);
+    try {
+      if (userFormState.mode === "create") {
+        await createUser(userFormState.values);
+        setStatusMessage("User created");
+      } else {
+        await updateUser(userFormState.userId, userFormState.values);
+        setStatusMessage("User updated");
+      }
+      closeUserForm();
+      refreshUserProgress();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save user";
+      setUserFormError(message);
+    } finally {
+      setUserFormSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async (account: AuthAccount) => {
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm(`Delete “${account.name}”?`);
+      if (!confirmed) {
+        return;
+      }
+    }
+    try {
+      await deleteUser(account.id);
+      setStatusMessage(`Deleted ${account.name}`);
+      if (userFormState && userFormState.mode === "edit" && userFormState.userId === account.id) {
+        closeUserForm();
+      }
+      refreshUserProgress();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to delete user";
+      setStatusMessage(message);
+    }
+  };
+
+  useEffect(() => {
+    if (!userConsoleOpen || !isAdmin) {
+      return;
+    }
+    refreshUserProgress();
+  }, [userConsoleOpen, isAdmin, refreshUserProgress]);
+
+  useEffect(() => {
+    if (!userConsoleOpen || !isAdmin) {
+      return;
+    }
+    const handleProgressChange = (event: Event) => {
+      const customEvent = event as CustomEvent<TrainingProgressEventDetail | undefined>;
+      const detailKey = customEvent.detail?.key;
+      if (detailKey && !detailKey.startsWith(`mentra:training-progress:${tenantId}:`)) {
+        return;
+      }
+      refreshUserProgress();
+    };
+    window.addEventListener("mentra:training-progress-change", handleProgressChange as EventListener);
+    return () => {
+      window.removeEventListener("mentra:training-progress-change", handleProgressChange as EventListener);
+    };
+  }, [userConsoleOpen, isAdmin, tenantId, refreshUserProgress]);
 
   const toggleCategory = (id: string) => {
     setOpenCategories(prev => ({ ...prev, [id]: !prev[id] }));
@@ -1321,6 +1583,167 @@ export default function Home() {
           </Link>
           {user ? (
             <div className="flex items-center gap-3 text-sm text-neutral-600">
+              {isAdmin ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setUserConsoleOpen(prev => !prev)}
+                    aria-label={userConsoleOpen ? "Hide user management console" : "Show user management console"}
+                    aria-expanded={userConsoleOpen}
+                    aria-controls="user-management-console"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <MenuIcon className="h-4 w-4" />
+                  </button>
+                  {userConsoleOpen ? (
+                    <div
+                      id="user-management-console"
+                      className="absolute right-0 top-12 z-30 w-80 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-semibold text-neutral-800">User management</h3>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUserConsoleOpen(false);
+                            closeUserForm();
+                          }}
+                          className="text-xs font-medium text-neutral-500 transition hover:text-neutral-700"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Manage who can access Mentra and track their training progress.
+                      </p>
+                      {userFormState ? (
+                        <form onSubmit={handleUserFormSubmit} className="mt-3 space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                          <div className="grid gap-3">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              Name
+                              <input
+                                type="text"
+                                value={userFormState.values.name}
+                                onChange={event => handleUserFormChange("name", event.target.value)}
+                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                required
+                              />
+                            </label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              Email
+                              <input
+                                type="email"
+                                value={userFormState.values.email}
+                                onChange={event => handleUserFormChange("email", event.target.value)}
+                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                required
+                              />
+                            </label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              Password
+                              <input
+                                type="text"
+                                value={userFormState.values.password}
+                                onChange={event => handleUserFormChange("password", event.target.value)}
+                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                required
+                              />
+                            </label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                              Role
+                              <select
+                                value={userFormState.values.role}
+                                onChange={event => handleUserFormChange("role", event.target.value as UserFormValues["role"])}
+                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                              >
+                                <option value="admin">Admin</option>
+                                <option value="staff">Staff</option>
+                              </select>
+                            </label>
+                          </div>
+                          {userFormError ? <p className="text-xs text-red-600">{userFormError}</p> : null}
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={closeUserForm}
+                              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-600 transition hover:bg-neutral-100"
+                              disabled={userFormSaving}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={userFormSaving}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                            >
+                              {userFormState.mode === "create" ? (userFormSaving ? "Creating…" : "Create user") : userFormSaving ? "Saving…" : "Save changes"}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={openCreateUserForm}
+                          className="mt-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-100"
+                        >
+                          Add user
+                        </button>
+                      )}
+                      <div className="mt-4 space-y-3 max-h-72 overflow-y-auto pr-1">
+                        {accounts.map(account => {
+                          const progress = userProgress[account.id] ?? { completed: 0, total: trainingPlaylist.length };
+                          const total = progress.total;
+                          const percent = total > 0 ? Math.round((progress.completed / total) * 100) : 0;
+                          return (
+                            <div key={account.id} className="rounded-lg border border-neutral-200 p-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
+                                    <span>{account.name}</span>
+                                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-500">{account.role}</span>
+                                  </div>
+                                  <p className="mt-1 text-xs text-neutral-500">{account.email}</p>
+                                  <p className="text-xs text-neutral-500">Password: {account.password}</p>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditUserForm(account)}
+                                    className="rounded-full border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-600 transition hover:bg-neutral-100"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteAccount(account)}
+                                    className="rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-3 space-y-1">
+                                <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                                  <span>{progress.completed} of {total} complete</span>
+                                  <span>{percent}%</span>
+                                </div>
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-200">
+                                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${percent}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {accounts.length === 0 ? (
+                          <p className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-3 py-2 text-center text-xs text-neutral-500">
+                            No users yet. Add a user to get started.
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <span>{user.name}</span>
               <span className="hidden sm:inline text-neutral-300">•</span>
               <span className="hidden sm:inline capitalize text-neutral-500">{user.role}</span>
