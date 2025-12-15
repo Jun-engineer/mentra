@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PLACEHOLDER_ITEM_ID } from "@/app/items/[itemId]/constants";
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent } from "react";
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -11,10 +11,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { useDroppable } from "@dnd-kit/core";
 import type { MenuCategory, MenuItem, MenuOrdering } from "@/data/menu";
 import { groupMenuItems } from "@/data/menu";
+import { TEMPLATE_MENU } from "@/data/menu-templates";
 import { deleteMenuItem, fetchMenuState, fetchTrainingPlaylist, updateMenuOrdering, upsertMenuItem } from "@/lib/menu-service";
 import type { UpsertMenuInput } from "@/lib/menu-service";
 import { appConfig } from "@/lib/config";
-import { useAuth, type AuthAccount } from "@/providers/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 
 type ModalState = {
   open: boolean;
@@ -40,219 +41,6 @@ const defaultFormValues: FormValues = {
   videoUrl: "",
   steps: ""
 };
-
-type TemplateSeedItem = {
-  id: string;
-  title: string;
-  description: string;
-  videoUrl?: string;
-  steps: string[];
-};
-
-type TemplateSubcategoryDefinition = {
-  id: string;
-  label: string;
-  items: TemplateSeedItem[];
-};
-
-type TemplateCategoryDefinition = {
-  id: string;
-  label: string;
-  subcategories: TemplateSubcategoryDefinition[];
-};
-
-const TEMPLATE_MENU: TemplateCategoryDefinition[] = [
-  {
-    id: "food",
-    label: "Food",
-    subcategories: [
-      {
-        id: "snacks",
-        label: "Snacks",
-        items: [
-          {
-            id: "template-food-snacks-chips",
-            title: "House Chips & Salsa",
-            description:
-              "Crisp kettle chips tossed in seasoning salt with a bright salsa roja. Prep in under 5 minutes during the mid-shift reset.",
-            steps: [
-              "Heat chips in the oven for 45 seconds to refresh crunch.",
-              "Toss in finishing salt and plate in the shallow bowl.",
-              "Ladle 3 oz salsa roja into ramekin; garnish with chopped cilantro.",
-              "Serve with shareable napkins and remind guests of spice level."
-            ]
-          }
-        ]
-      },
-      {
-        id: "sides",
-        label: "Sides",
-        items: [
-          {
-            id: "template-food-sides-broccolini",
-            title: "Roasted Garlic Broccolini",
-            description:
-              "Quick-fire broccolini tossed with confit garlic oil and lemon zest. Ideal for pairing with mains on busy nights.",
-            steps: [
-              "Blanch broccolini for 60 seconds and shock in ice water.",
-              "In sauté pan, sear with garlic oil until lightly charred.",
-              "Finish with lemon zest, chili flakes, and Maldon salt.",
-              "Plate in share bowl and drizzle remaining oil over top."
-            ]
-          }
-        ]
-      },
-      {
-        id: "mains",
-        label: "Mains",
-        items: [
-          {
-            id: "template-food-mains-burger",
-            title: "Mentra Smash Burger",
-            description:
-              "Double smashed beef patties with caramelized onions, cheddar, and house sauce. Ideal for service training reps.",
-            steps: [
-              "Press two 3 oz patties on the flat top and season immediately.",
-              "Flip after 60 seconds, top with cheddar, and steam to melt.",
-              "Toast brioche bun, spread house sauce on both sides.",
-              "Stack patties, add caramelized onions and butter lettuce, then spike."
-            ]
-          }
-        ]
-      },
-      {
-        id: "desserts",
-        label: "Desserts",
-        items: [
-          {
-            id: "template-food-desserts-pudding",
-            title: "Salted Caramel Pudding",
-            description:
-              "Creamy butterscotch pudding portioned for service line with a quick brûléed sugar cap.",
-            steps: [
-              "Portion 5 oz of chilled pudding into coupe glass.",
-              "Top with whipped cream rosette and drizzle caramel.",
-              "Torch turbinado sugar until amber and let set.",
-              "Finish with flaky sea salt and serve with dessert spoon."
-            ]
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: "drink",
-    label: "Drink",
-    subcategories: [
-      {
-        id: "soft-drinks",
-        label: "Soft Drinks",
-        items: [
-          {
-            id: "template-drink-soft-ginger",
-            title: "Ginger Citrus Fizz",
-            description:
-              "House-made ginger syrup topped with yuzu soda and candied ginger garnish. Great for zero-proof pairing.",
-            steps: [
-              "Fill Collins glass with pebble ice.",
-              "Add 1.5 oz ginger syrup and 0.5 oz lime juice.",
-              "Top with yuzu soda, stir gently, and garnish with candied ginger skewer."
-            ]
-          }
-        ]
-      },
-      {
-        id: "beer",
-        label: "Beer",
-        items: [
-          {
-            id: "template-drink-beer-pale",
-            title: "Mentra Pale Ale",
-            description:
-              "Citrus-forward pale ale from our local partner brewery. Emphasize cold glassware and head retention.",
-            steps: [
-              "Rinse 16 oz glass with cold water and hold at 45° under tap.",
-              "Pour steadily, straightening glass at halfway point.",
-              "Cap pour with 1 inch foam head, wipe glass, and serve on coaster."
-            ]
-          }
-        ]
-      },
-      {
-        id: "whiskey",
-        label: "Whiskey",
-        items: [
-          {
-            id: "template-drink-whiskey-oldfashioned",
-            title: "Smoked Old Fashioned",
-            description:
-              "Classic build finished with maple smoke. Perfect for showcasing bar flair in training videos.",
-            steps: [
-              "Stir 2 oz rye, 0.25 oz demerara, and 2 dashes bitters over ice.",
-              "Strain over large cube in rocks glass.",
-              "Torch charred maple plank and capture smoke beneath cloche.",
-              "Express orange peel, rim glass, and present with cloche reveal."
-            ]
-          }
-        ]
-      },
-      {
-        id: "red-wine",
-        label: "Red Wine",
-        items: [
-          {
-            id: "template-drink-red-pinot",
-            title: "Pinot Noir Service",
-            description:
-              "Bottle service guide for the house pinot noir including temperature, glassware, and talking points.",
-            steps: [
-              "Confirm bottle vintage and guest preference for tasting.",
-              "Present label to guest, open with waiter’s friend, and offer cork.",
-              "Pour 2 oz taste, receive approval, then serve clockwise with 5 oz pours.",
-              "Rest bottle on coaster with label facing guests."
-            ]
-          }
-        ]
-      },
-      {
-        id: "white-wine",
-        label: "White Wine",
-        items: [
-          {
-            id: "template-drink-white-sauvignon",
-            title: "Sauvignon Blanc Service",
-            description:
-              "Highlight the bright, herbal notes of our sauvignon blanc while reinforcing chill-hold procedures.",
-            steps: [
-              "Retrieve bottle from cold well and towel dry.",
-              "Present, uncork, and offer sample to host.",
-              "Serve 5 oz pours into chilled stems, finishing any remaining wine evenly.",
-              "Store bottle in silver chiller with fresh ice if not finished."
-            ]
-          }
-        ]
-      },
-      {
-        id: "sake",
-        label: "Sake",
-        items: [
-          {
-            id: "template-drink-sake-junmai",
-            title: "Junmai Ginjo Pour",
-            description:
-              "Step-by-step for presenting our feature sake flight, including pronunciation cues for staff training.",
-            steps: [
-              "Warm carafe in 120°F water bath for 60 seconds.",
-              "Announce brewery story and tasting notes before pouring.",
-              "Pour 2 oz into ochoko for each guest, rotating clockwise.",
-              "Offer chilled water palate cleanser and thank guests."
-            ]
-          }
-        ]
-      }
-    ]
-  }
-];
 
 type DragDataCategory = {
   type: "category";
@@ -300,13 +88,6 @@ const notifyTrainingProgressChange = (storageKey: string) => {
   window.dispatchEvent(new CustomEvent<TrainingProgressEventDetail>("mentra:training-progress-change", {
     detail: { key: storageKey }
   }));
-};
-
-type UserFormValues = {
-  name: string;
-  email: string;
-  password: string;
-  role: "admin" | "staff";
 };
 
 type CategoryPanelProps = {
@@ -854,7 +635,7 @@ const MenuItemForm = ({
 };
 
 export default function Home() {
-  const { user, loading, logout, accounts, createUser, updateUser, deleteUser } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openSubCategories, setOpenSubCategories] = useState<Record<string, boolean>>({});
   const [modalState, setModalState] = useState<ModalState>({ open: false, mode: "create" });
@@ -872,22 +653,8 @@ export default function Home() {
   const [trainingLoading, setTrainingLoading] = useState(false);
   const [trainingError, setTrainingError] = useState<string | null>(null);
   const [trainingPlaylistHydrated, setTrainingPlaylistHydrated] = useState(false);
-  const [userConsoleOpen, setUserConsoleOpen] = useState(false);
-  const [userProgress, setUserProgress] = useState<Record<string, { completed: number; total: number }>>({});
-  const [userFormState, setUserFormState] = useState<
-    | {
-        mode: "create";
-        values: UserFormValues;
-      }
-    | {
-        mode: "edit";
-        userId: string;
-        values: UserFormValues;
-      }
-    | null
-  >(null);
-  const [userFormError, setUserFormError] = useState<string | null>(null);
-  const [userFormSaving, setUserFormSaving] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isAdmin = user?.role === "admin";
   const tenantId = appConfig.tenantId ?? "default";
@@ -1061,194 +828,35 @@ export default function Home() {
   }, [trainingPlaylistHydrated, trainingPlaylist, trainingStorageKey]);
 
   useEffect(() => {
-    if (!isAdmin) {
-      if (userConsoleOpen) {
-        setUserConsoleOpen(false);
-      }
-      if (userFormState) {
-        setUserFormState(null);
-        setUserFormError(null);
-      }
+    if (!user) {
+      setUserMenuOpen(false);
     }
-  }, [isAdmin, userConsoleOpen, userFormState]);
+  }, [user]);
 
   useEffect(() => {
-    if (!userConsoleOpen) {
-      if (userFormState) {
-        setUserFormState(null);
-        setUserFormError(null);
-      }
+    if (!userMenuOpen) {
       return;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setUserConsoleOpen(false);
+        setUserMenuOpen(false);
+      }
+    };
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!userMenuRef.current) {
+        return;
+      }
+      if (!userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mousedown", handleClickOutside);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [userConsoleOpen, userFormState]);
-
-  const refreshUserProgress = useCallback(() => {
-    if (!isAdmin) {
-      return;
-    }
-    if (typeof window === "undefined") {
-      return;
-    }
-    if (!trainingPlaylistHydrated) {
-      return;
-    }
-    const total = trainingPlaylist.length;
-    const next: Record<string, { completed: number; total: number }> = {};
-    for (const account of accounts) {
-      const storageKey = `mentra:training-progress:${tenantId}:${account.id}`;
-      try {
-        const stored = window.localStorage.getItem(storageKey);
-        if (!stored) {
-          next[account.id] = { completed: 0, total };
-          continue;
-        }
-        const parsed = JSON.parse(stored) as Record<string, unknown> | null;
-        if (!parsed || typeof parsed !== "object") {
-          next[account.id] = { completed: 0, total };
-          continue;
-        }
-        const record = parsed as Record<string, unknown>;
-        let completed = 0;
-        for (const item of trainingPlaylist) {
-          const value = record[item.id];
-          if (typeof value === "boolean" && value) {
-            completed += 1;
-          }
-        }
-        next[account.id] = { completed, total };
-      } catch (storageError) {
-        console.warn("Failed to parse training progress for", account.id, storageError);
-        next[account.id] = { completed: 0, total };
-      }
-    }
-    setUserProgress(next);
-  }, [accounts, isAdmin, tenantId, trainingPlaylistHydrated, trainingPlaylist]);
-
-  const openCreateUserForm = () => {
-    setUserFormState({
-      mode: "create",
-      values: {
-        name: "",
-        email: "",
-        password: "",
-        role: "staff"
-      }
-    });
-    setUserFormError(null);
-  };
-
-  const openEditUserForm = (account: AuthAccount) => {
-    setUserFormState({
-      mode: "edit",
-      userId: account.id,
-      values: {
-        name: account.name,
-        email: account.email,
-        password: account.password,
-        role: account.role
-      }
-    });
-    setUserFormError(null);
-  };
-
-  const closeUserForm = () => {
-    setUserFormState(null);
-    setUserFormError(null);
-  };
-
-  const handleUserFormChange = <Key extends keyof UserFormValues>(field: Key, value: UserFormValues[Key]) => {
-    setUserFormState(prev => {
-      if (!prev) {
-        return prev;
-      }
-      return {
-        ...prev,
-        values: {
-          ...prev.values,
-          [field]: value
-        }
-      };
-    });
-  };
-
-  const handleUserFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!userFormState) {
-      return;
-    }
-    setUserFormError(null);
-    setUserFormSaving(true);
-    try {
-      if (userFormState.mode === "create") {
-        await createUser(userFormState.values);
-        setStatusMessage("User created");
-      } else {
-        await updateUser(userFormState.userId, userFormState.values);
-        setStatusMessage("User updated");
-      }
-      closeUserForm();
-      refreshUserProgress();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to save user";
-      setUserFormError(message);
-    } finally {
-      setUserFormSaving(false);
-    }
-  };
-
-  const handleDeleteAccount = async (account: AuthAccount) => {
-    if (typeof window !== "undefined") {
-      const confirmed = window.confirm(`Delete “${account.name}”?`);
-      if (!confirmed) {
-        return;
-      }
-    }
-    try {
-      await deleteUser(account.id);
-      setStatusMessage(`Deleted ${account.name}`);
-      if (userFormState && userFormState.mode === "edit" && userFormState.userId === account.id) {
-        closeUserForm();
-      }
-      refreshUserProgress();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to delete user";
-      setStatusMessage(message);
-    }
-  };
-
-  useEffect(() => {
-    if (!userConsoleOpen || !isAdmin) {
-      return;
-    }
-    refreshUserProgress();
-  }, [userConsoleOpen, isAdmin, refreshUserProgress]);
-
-  useEffect(() => {
-    if (!userConsoleOpen || !isAdmin) {
-      return;
-    }
-    const handleProgressChange = (event: Event) => {
-      const customEvent = event as CustomEvent<TrainingProgressEventDetail | undefined>;
-      const detailKey = customEvent.detail?.key;
-      if (detailKey && !detailKey.startsWith(`mentra:training-progress:${tenantId}:`)) {
-        return;
-      }
-      refreshUserProgress();
-    };
-    window.addEventListener("mentra:training-progress-change", handleProgressChange as EventListener);
-    return () => {
-      window.removeEventListener("mentra:training-progress-change", handleProgressChange as EventListener);
-    };
-  }, [userConsoleOpen, isAdmin, tenantId, refreshUserProgress]);
+  }, [userMenuOpen]);
 
   const toggleCategory = (id: string) => {
     setOpenCategories(prev => ({ ...prev, [id]: !prev[id] }));
@@ -1592,177 +1200,57 @@ export default function Home() {
           </Link>
           {user ? (
             <div className="flex items-center gap-3 text-sm text-neutral-600">
-              {isAdmin ? (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setUserConsoleOpen(prev => !prev)}
-                    aria-label={userConsoleOpen ? "Hide user management console" : "Show user management console"}
-                    aria-expanded={userConsoleOpen}
-                    aria-controls="user-management-console"
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <MenuIcon className="h-4 w-4" />
-                  </button>
-                  {userConsoleOpen ? (
-                    <div
-                      id="user-management-console"
-                      className="absolute right-0 top-12 z-30 w-80 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl"
+              <span className="hidden sm:inline text-neutral-500">{user.name}</span>
+              <div ref={userMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen(prev => !prev)}
+                  aria-label={userMenuOpen ? "Hide menu" : "Show menu"}
+                  aria-expanded={userMenuOpen}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600 transition hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <MenuIcon className="h-4 w-4" />
+                </button>
+                {userMenuOpen ? (
+                  <div className="absolute right-0 mt-2 w-48 rounded-xl border border-neutral-200 bg-white p-2 shadow-xl">
+                    {isAdmin ? (
+                      <>
+                        <Link
+                          href="/manage/training"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                        >
+                          Training Management
+                        </Link>
+                        <Link
+                          href="/manage/menus"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                        >
+                          Menu Management
+                        </Link>
+                        <Link
+                          href="/manage/users"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                        >
+                          User Management
+                        </Link>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-sm font-semibold text-neutral-800">User management</h3>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserConsoleOpen(false);
-                            closeUserForm();
-                          }}
-                          className="text-xs font-medium text-neutral-500 transition hover:text-neutral-700"
-                        >
-                          Close
-                        </button>
-                      </div>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        Manage who can access Mentra and track their training progress.
-                      </p>
-                      {userFormState ? (
-                        <form onSubmit={handleUserFormSubmit} className="mt-3 space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                          <div className="grid gap-3">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                              Name
-                              <input
-                                type="text"
-                                value={userFormState.values.name}
-                                onChange={event => handleUserFormChange("name", event.target.value)}
-                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                required
-                              />
-                            </label>
-                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                              Email
-                              <input
-                                type="email"
-                                value={userFormState.values.email}
-                                onChange={event => handleUserFormChange("email", event.target.value)}
-                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                required
-                              />
-                            </label>
-                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                              Password
-                              <input
-                                type="text"
-                                value={userFormState.values.password}
-                                onChange={event => handleUserFormChange("password", event.target.value)}
-                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                                required
-                              />
-                            </label>
-                            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                              Role
-                              <select
-                                value={userFormState.values.role}
-                                onChange={event => handleUserFormChange("role", event.target.value as UserFormValues["role"])}
-                                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm text-neutral-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                              >
-                                <option value="admin">Admin</option>
-                                <option value="staff">Staff</option>
-                              </select>
-                            </label>
-                          </div>
-                          {userFormError ? <p className="text-xs text-red-600">{userFormError}</p> : null}
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={closeUserForm}
-                              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-600 transition hover:bg-neutral-100"
-                              disabled={userFormSaving}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={userFormSaving}
-                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-                            >
-                              {userFormState.mode === "create" ? (userFormSaving ? "Creating…" : "Create user") : userFormSaving ? "Saving…" : "Save changes"}
-                            </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={openCreateUserForm}
-                          className="mt-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-600 transition hover:border-blue-300 hover:bg-blue-100"
-                        >
-                          Add user
-                        </button>
-                      )}
-                      <div className="mt-4 space-y-3 max-h-72 overflow-y-auto pr-1">
-                        {accounts.map(account => {
-                          const progress = userProgress[account.id] ?? { completed: 0, total: trainingPlaylist.length };
-                          const total = progress.total;
-                          const percent = total > 0 ? Math.round((progress.completed / total) * 100) : 0;
-                          return (
-                            <div key={account.id} className="rounded-lg border border-neutral-200 p-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <div className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
-                                    <span>{account.name}</span>
-                                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-500">{account.role}</span>
-                                  </div>
-                                  <p className="mt-1 text-xs text-neutral-500">{account.email}</p>
-                                  <p className="text-xs text-neutral-500">Password: {account.password}</p>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => openEditUserForm(account)}
-                                    className="rounded-full border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-600 transition hover:bg-neutral-100"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteAccount(account)}
-                                    className="rounded-full border border-red-200 px-3 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="mt-3 space-y-1">
-                                <div className="flex items-center justify-between text-[11px] text-neutral-500">
-                                  <span>{progress.completed} of {total} complete</span>
-                                  <span>{percent}%</span>
-                                </div>
-                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-200">
-                                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${percent}%` }} />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {accounts.length === 0 ? (
-                          <p className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-3 py-2 text-center text-xs text-neutral-500">
-                            No users yet. Add a user to get started.
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              <span>{user.name}</span>
-              <span className="hidden sm:inline text-neutral-300">•</span>
-              <span className="hidden sm:inline capitalize text-neutral-500">{user.role}</span>
-              <button
-                type="button"
-                onClick={logout}
-                className="rounded-full border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-600 transition hover:bg-neutral-100"
-              >
-                Log out
-              </button>
+                      Log out
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : (
             <Link
