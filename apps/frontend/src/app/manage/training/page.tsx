@@ -3,9 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, type DragEndEvent, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { type CSSProperties, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MenuItem } from "@/data/menu";
-import { fetchTrainingPlaylist, updateTrainingPlaylist, upsertMenuItem, type UpsertMenuInput } from "@/lib/menu-service";
+import { deleteMenuItem, fetchTrainingPlaylist, updateTrainingPlaylist, upsertMenuItem, type UpsertMenuInput } from "@/lib/menu-service";
 import { useAuth } from "@/providers/auth-provider";
 
 const buildEmptyForm = (): FormValues => ({
@@ -37,6 +40,90 @@ type StatusState = {
   message: string;
 };
 
+const TrainingRow = ({
+  item,
+  onEdit,
+  onDelete,
+  disabled
+}: {
+  item: MenuItem;
+  onEdit: () => void;
+  onDelete: () => void;
+  disabled: boolean;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+    disabled
+  });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1
+  };
+
+  return (
+    <li ref={setNodeRef} style={style} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            aria-label={`Reorder ${item.title}`}
+            disabled={disabled}
+            className="flex h-9 w-9 shrink-0 cursor-grab items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-500 transition hover:text-neutral-700 focus:text-neutral-700 focus:outline-none active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-60"
+            {...attributes}
+            {...listeners}
+          >
+            <GripIcon className="h-4 w-4" />
+          </button>
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-neutral-400">
+              {item.category}
+              {item.subcategory ? ` · ${item.subcategory}` : ""}
+            </p>
+            <h2 className="text-lg font-semibold text-neutral-900">{item.title}</h2>
+            {item.description ? <p className="text-sm text-neutral-600">{item.description}</p> : null}
+            {item.videoUrl ? (
+              <p className="text-xs text-blue-600">
+                <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  View training video ↗
+                </a>
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={disabled ? undefined : onEdit}
+            disabled={disabled}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label={`Edit ${item.title}`}
+          >
+            <PencilIcon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={disabled ? undefined : onDelete}
+            disabled={disabled}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label={`Delete ${item.title}`}
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      {item.steps && item.steps.length ? (
+        <ol className="mt-4 list-decimal space-y-2 pl-4 text-sm text-neutral-700">
+          {item.steps.map((step, index) => (
+            <li key={index}>{step}</li>
+          ))}
+        </ol>
+      ) : null}
+    </li>
+  );
+};
+
 export default function TrainingManagementPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -51,8 +138,21 @@ export default function TrainingManagementPage() {
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusState | null>(null);
+  const [playlistSaving, setPlaylistSaving] = useState(false);
+  const [deleteInFlight, setDeleteInFlight] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin";
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  );
 
   useEffect(() => {
     if (!loading && !user) {
@@ -124,6 +224,84 @@ export default function TrainingManagementPage() {
     const lookup = new Map(trainingItems.map(item => [item.id, item]));
     return trainingIds.map(id => lookup.get(id)).filter(Boolean) as MenuItem[];
   }, [trainingIds, trainingItems]);
+
+  const persistTrainingOrder = useCallback(
+    async (nextIds: string[], successMessage?: string) => {
+      setPlaylistSaving(true);
+      try {
+        await updateTrainingPlaylist(nextIds);
+        setTrainingError(null);
+        if (successMessage) {
+          setStatus({ type: "success", message: successMessage });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to update training order.";
+        setTrainingError(message);
+        setStatus({ type: "error", message });
+        await loadTraining();
+      } finally {
+        setPlaylistSaving(false);
+      }
+    },
+    [loadTraining]
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) {
+        return;
+      }
+
+      setTrainingIds(prev => {
+        const fromIndex = prev.indexOf(active.id as string);
+        const toIndex = prev.indexOf(over.id as string);
+
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+          return prev;
+        }
+
+        const nextIds = arrayMove(prev, fromIndex, toIndex);
+        void persistTrainingOrder(nextIds, "Training order updated.");
+        return nextIds;
+      });
+    },
+    [persistTrainingOrder]
+  );
+
+  const handleDelete = useCallback(
+    async (item: MenuItem) => {
+      if (deleteInFlight === item.id) {
+        return;
+      }
+
+      let confirmed = true;
+      if (typeof window !== "undefined") {
+        confirmed = window.confirm(`Delete “${item.title}”?`);
+      }
+      if (!confirmed) {
+        return;
+      }
+
+      setDeleteInFlight(item.id);
+      const nextIds = trainingIds.filter(id => id !== item.id);
+      setTrainingIds(nextIds);
+      setTrainingItems(prev => prev.filter(entry => entry.id !== item.id));
+
+      try {
+        await deleteMenuItem(item.id);
+        await persistTrainingOrder(nextIds, `Deleted ${item.title}.`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to delete training.";
+        setStatus({ type: "error", message });
+        setTrainingError(message);
+        await loadTraining();
+      } finally {
+        setDeleteInFlight(null);
+      }
+    },
+    [deleteInFlight, trainingIds, persistTrainingOrder, loadTraining]
+  );
 
   const openCreateForm = () => {
     setFormState({ open: true, mode: "create" });
@@ -331,13 +509,17 @@ export default function TrainingManagementPage() {
           <div className="text-sm text-neutral-500">
             {orderedTraining.length} training item{orderedTraining.length === 1 ? "" : "s"}
           </div>
-          <button
-            type="button"
-            onClick={openCreateForm}
-            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            + Create training
-          </button>
+          <div className="flex items-center gap-3">
+            {playlistSaving ? <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">Saving order…</span> : null}
+            {deleteInFlight ? <span className="text-xs font-semibold uppercase tracking-wide text-red-600">Deleting…</span> : null}
+            <button
+              type="button"
+              onClick={openCreateForm}
+              className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              + Create training
+            </button>
+          </div>
         </div>
 
         {status ? (
@@ -359,47 +541,26 @@ export default function TrainingManagementPage() {
             No training modules yet. Create the first training to get started.
           </div>
         ) : (
-          <ul className="mt-8 space-y-4">
-            {orderedTraining.map(item => (
-              <li key={item.id} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-wide text-neutral-400">{item.category}{item.subcategory ? ` · ${item.subcategory}` : ""}</p>
-                    <h2 className="text-lg font-semibold text-neutral-900">{item.title}</h2>
-                    {item.description ? (
-                      <p className="text-sm text-neutral-600">{item.description}</p>
-                    ) : null}
-                    {item.videoUrl ? (
-                      <p className="text-xs text-blue-600">
-                        <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                          View training video ↗
-                        </a>
-                      </p>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openEditForm(item)}
-                    className="rounded-full border border-neutral-300 px-4 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-100"
-                  >
-                    Edit
-                  </button>
-                </div>
-                {item.steps && item.steps.length ? (
-                  <ol className="mt-4 list-decimal space-y-2 pl-4 text-sm text-neutral-700">
-                    {item.steps.map((step, index) => (
-                      <li key={index}>{step}</li>
-                    ))}
-                  </ol>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={orderedTraining.map(item => item.id)} strategy={verticalListSortingStrategy}>
+              <ul className="mt-8 space-y-4">
+                {orderedTraining.map(item => (
+                  <TrainingRow
+                    key={item.id}
+                    item={item}
+                    onEdit={() => openEditForm(item)}
+                    onDelete={() => handleDelete(item)}
+                    disabled={playlistSaving || Boolean(deleteInFlight)}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
 
         {formState.open ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
-            <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl sm:p-8">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold text-neutral-900">
@@ -510,5 +671,29 @@ export default function TrainingManagementPage() {
 const MenuIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
     <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" fill="currentColor" />
+  </svg>
+);
+
+const GripIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 20 20" aria-hidden="true" className={className} focusable="false">
+    <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+    <circle cx="6" cy="10" r="1.5" fill="currentColor" />
+    <circle cx="6" cy="14" r="1.5" fill="currentColor" />
+    <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+    <circle cx="12" cy="10" r="1.5" fill="currentColor" />
+    <circle cx="12" cy="14" r="1.5" fill="currentColor" />
+  </svg>
+);
+
+const PencilIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor" />
+    <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor" />
+  </svg>
+);
+
+const TrashIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className={className} focusable="false">
+    <path d="M6 7h12l-1 14H7L6 7zm5 2v10h2V9h-2zm5.5-5-1-1h-7l-1 1H5v2h14V4h-2.5z" fill="currentColor" />
   </svg>
 );
